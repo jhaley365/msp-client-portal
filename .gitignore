@@ -1,0 +1,23 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# AWS credentials / SAM artifacts
+.aws-sam/
+samconfig.toml
+
+# Terraform (if added later)
+*.tfstate
+*.tfstate.backup
+.terraform/
