@@ -259,12 +259,220 @@ DNS_EVENTS_TABLE: dict[str, Any] = {
     "Tags": [{"Key": "Project", "Value": "msp-client-portal"}],
 }
 
+CUSTOMERS_TABLE: dict[str, Any] = {
+    "TableName": "Customers",
+    **_PAY_PER_REQUEST,
+    "AttributeDefinitions": [
+        {"AttributeName": "customer_id", "AttributeType": "S"},
+        {"AttributeName": "email", "AttributeType": "S"},
+    ],
+    "KeySchema": [
+        {"AttributeName": "customer_id", "KeyType": "HASH"},
+    ],
+    "GlobalSecondaryIndexes": [
+        {
+            # Look up a customer by email address (used during login).
+            "IndexName": "email-index",
+            "KeySchema": [
+                {"AttributeName": "email", "KeyType": "HASH"},
+            ],
+            "Projection": {"ProjectionType": "ALL"},
+        },
+    ],
+    "Tags": [{"Key": "Project", "Value": "msp-client-portal"}],
+}
+# Fields stored per item (not indexed, so not in AttributeDefinitions):
+#   password_hash  str   bcrypt hash of the user's password
+#   name           str   display name
+#   is_active      bool  soft-delete flag
+#   created_at     str   ISO-8601
+
+EC2_INSTANCES_TABLE: dict[str, Any] = {
+    "TableName": "EC2Instances",
+    **_PAY_PER_REQUEST,
+    "AttributeDefinitions": [
+        {"AttributeName": "instance_id", "AttributeType": "S"},
+        {"AttributeName": "customer_id", "AttributeType": "S"},
+        {"AttributeName": "state", "AttributeType": "S"},
+        {"AttributeName": "last_synced_at", "AttributeType": "S"},
+    ],
+    "KeySchema": [
+        {"AttributeName": "instance_id", "KeyType": "HASH"},
+    ],
+    "GlobalSecondaryIndexes": [
+        {
+            # All instances belonging to a customer, sorted by sync time.
+            "IndexName": "customer_id-last_synced_at-index",
+            "KeySchema": [
+                {"AttributeName": "customer_id", "KeyType": "HASH"},
+                {"AttributeName": "last_synced_at", "KeyType": "RANGE"},
+            ],
+            "Projection": {"ProjectionType": "ALL"},
+        },
+        {
+            # Filter a customer's instances by state (running, stopped, …).
+            "IndexName": "customer_id-state-index",
+            "KeySchema": [
+                {"AttributeName": "customer_id", "KeyType": "HASH"},
+                {"AttributeName": "state", "KeyType": "RANGE"},
+            ],
+            "Projection": {
+                "ProjectionType": "INCLUDE",
+                "NonKeyAttributes": [
+                    "instance_id",
+                    "instance_type",
+                    "region",
+                    "private_ip",
+                    "public_ip",
+                    "client_tag",
+                    "last_synced_at",
+                ],
+            },
+        },
+    ],
+    "Tags": [{"Key": "Project", "Value": "msp-client-portal"}],
+}
+# Additional fields stored per item:
+#   client_tag        str   value of the EC2 "Client" tag
+#   instance_type     str   e.g. "t3.medium"
+#   region            str   e.g. "us-east-1"
+#   availability_zone str
+#   public_ip         str   may be absent
+#   private_ip        str
+#   launch_time       str   ISO-8601
+#   platform          str   "windows" | "linux" | ""
+#   vpc_id            str
+#   subnet_id         str
+#   image_id          str   AMI id
+#   key_name          str
+#   tags              map   all raw EC2 tags as key→value
+
+EC2_VOLUMES_TABLE: dict[str, Any] = {
+    "TableName": "EC2Volumes",
+    **_PAY_PER_REQUEST,
+    "AttributeDefinitions": [
+        {"AttributeName": "volume_id", "AttributeType": "S"},
+        {"AttributeName": "customer_id", "AttributeType": "S"},
+        {"AttributeName": "state", "AttributeType": "S"},
+        {"AttributeName": "last_synced_at", "AttributeType": "S"},
+    ],
+    "KeySchema": [
+        {"AttributeName": "volume_id", "KeyType": "HASH"},
+    ],
+    "GlobalSecondaryIndexes": [
+        {
+            # All volumes for a customer, sorted by sync time.
+            "IndexName": "customer_id-last_synced_at-index",
+            "KeySchema": [
+                {"AttributeName": "customer_id", "KeyType": "HASH"},
+                {"AttributeName": "last_synced_at", "KeyType": "RANGE"},
+            ],
+            "Projection": {"ProjectionType": "ALL"},
+        },
+        {
+            # Filter a customer's volumes by state (available, in-use, …).
+            "IndexName": "customer_id-state-index",
+            "KeySchema": [
+                {"AttributeName": "customer_id", "KeyType": "HASH"},
+                {"AttributeName": "state", "KeyType": "RANGE"},
+            ],
+            "Projection": {
+                "ProjectionType": "INCLUDE",
+                "NonKeyAttributes": [
+                    "volume_id",
+                    "size_gb",
+                    "volume_type",
+                    "availability_zone",
+                    "encrypted",
+                    "attached_instance_id",
+                    "client_tag",
+                    "last_synced_at",
+                ],
+            },
+        },
+    ],
+    "Tags": [{"Key": "Project", "Value": "msp-client-portal"}],
+}
+# Additional fields stored per item:
+#   client_tag           str   value of the EC2 "Client" tag
+#   size_gb              int
+#   volume_type          str   gp3 | gp2 | io1 | st1 | sc1 | standard
+#   availability_zone    str
+#   encrypted            bool
+#   iops                 int   may be absent
+#   throughput           int   MiB/s, may be absent
+#   attached_instance_id str   empty string when not attached
+#   attachment_state     str   attached | detached | attaching | detaching
+#   create_time          str   ISO-8601
+#   tags                 map   all raw EC2 tags
+
+EC2_SNAPSHOTS_TABLE: dict[str, Any] = {
+    "TableName": "EC2Snapshots",
+    **_PAY_PER_REQUEST,
+    "AttributeDefinitions": [
+        {"AttributeName": "snapshot_id", "AttributeType": "S"},
+        {"AttributeName": "customer_id", "AttributeType": "S"},
+        {"AttributeName": "state", "AttributeType": "S"},
+        {"AttributeName": "start_time", "AttributeType": "S"},
+    ],
+    "KeySchema": [
+        {"AttributeName": "snapshot_id", "KeyType": "HASH"},
+    ],
+    "GlobalSecondaryIndexes": [
+        {
+            # All snapshots for a customer sorted by creation time.
+            "IndexName": "customer_id-start_time-index",
+            "KeySchema": [
+                {"AttributeName": "customer_id", "KeyType": "HASH"},
+                {"AttributeName": "start_time", "KeyType": "RANGE"},
+            ],
+            "Projection": {"ProjectionType": "ALL"},
+        },
+        {
+            # Filter a customer's snapshots by state (pending, completed, error).
+            "IndexName": "customer_id-state-index",
+            "KeySchema": [
+                {"AttributeName": "customer_id", "KeyType": "HASH"},
+                {"AttributeName": "state", "KeyType": "RANGE"},
+            ],
+            "Projection": {
+                "ProjectionType": "INCLUDE",
+                "NonKeyAttributes": [
+                    "snapshot_id",
+                    "volume_id",
+                    "size_gb",
+                    "description",
+                    "encrypted",
+                    "progress",
+                    "client_tag",
+                    "start_time",
+                ],
+            },
+        },
+    ],
+    "Tags": [{"Key": "Project", "Value": "msp-client-portal"}],
+}
+# Additional fields stored per item:
+#   client_tag    str   value of the EC2 "Client" tag
+#   volume_id     str   source volume
+#   size_gb       int
+#   description   str
+#   encrypted     bool
+#   owner_id      str   AWS account id
+#   progress      str   "100%" when complete
+#   tags          map   all raw EC2 tags
+
+
 # Ordered so dependencies come first (Tenants before child entities).
 ALL_TABLES: list[dict[str, Any]] = [
     TENANTS_TABLE,
     TICKETS_TABLE,
     SECURITY_INCIDENTS_TABLE,
     DNS_EVENTS_TABLE,
+    CUSTOMERS_TABLE,
+    EC2_INSTANCES_TABLE,
+    EC2_VOLUMES_TABLE,
+    EC2_SNAPSHOTS_TABLE,
 ]
 
 
