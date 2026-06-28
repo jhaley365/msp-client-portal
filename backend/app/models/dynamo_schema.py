@@ -463,6 +463,234 @@ EC2_SNAPSHOTS_TABLE: dict[str, Any] = {
 #   tags          map   all raw EC2 tags
 
 
+SYNCRO_TICKETS_TABLE: dict[str, Any] = {
+    "TableName": "SyncroTickets",
+    **_PAY_PER_REQUEST,
+    "AttributeDefinitions": [
+        {"AttributeName": "ticket_id", "AttributeType": "S"},
+        {"AttributeName": "customer_id", "AttributeType": "S"},
+        {"AttributeName": "created_at", "AttributeType": "S"},  # ISO-8601
+        {"AttributeName": "status", "AttributeType": "S"},
+    ],
+    "KeySchema": [
+        {"AttributeName": "ticket_id", "KeyType": "HASH"},
+    ],
+    "GlobalSecondaryIndexes": [
+        {
+            # All Syncro tickets for a customer, sorted by creation time.
+            "IndexName": "customer_id-created_at-index",
+            "KeySchema": [
+                {"AttributeName": "customer_id", "KeyType": "HASH"},
+                {"AttributeName": "created_at", "KeyType": "RANGE"},
+            ],
+            "Projection": {"ProjectionType": "ALL"},
+        },
+        {
+            # Syncro tickets filtered by status within a customer.
+            "IndexName": "customer_id-status-index",
+            "KeySchema": [
+                {"AttributeName": "customer_id", "KeyType": "HASH"},
+                {"AttributeName": "status", "KeyType": "RANGE"},
+            ],
+            "Projection": {"ProjectionType": "ALL"},
+        },
+    ],
+    "Tags": [{"Key": "Project", "Value": "msp-client-portal"}],
+}
+# Additional fields stored per item:
+#   customer_name   str   display name from the Customers table
+#   subject         str   ticket subject line
+#   status          str   open | closed | in_progress | …
+#   priority        str   low | medium | high | urgent
+#   assigned_tech   str   technician email / name
+#   problem_type    str   Syncro problem type category
+#   last_synced_at  str   ISO-8601 timestamp of last sync
+
+HUNTRESS_AGENTS_TABLE: dict[str, Any] = {
+    "TableName": "HuntressAgents",
+    **_PAY_PER_REQUEST,
+    "AttributeDefinitions": [
+        {"AttributeName": "agent_id", "AttributeType": "S"},
+        {"AttributeName": "customer_id", "AttributeType": "S"},
+        {"AttributeName": "last_synced_at", "AttributeType": "S"},  # ISO-8601
+        {"AttributeName": "status", "AttributeType": "S"},
+    ],
+    "KeySchema": [
+        {"AttributeName": "agent_id", "KeyType": "HASH"},
+    ],
+    "GlobalSecondaryIndexes": [
+        {
+            # All Huntress agents for a customer, sorted by sync time.
+            "IndexName": "customer_id-last_synced_at-index",
+            "KeySchema": [
+                {"AttributeName": "customer_id", "KeyType": "HASH"},
+                {"AttributeName": "last_synced_at", "KeyType": "RANGE"},
+            ],
+            "Projection": {"ProjectionType": "ALL"},
+        },
+        {
+            # Agents filtered by status (online, offline, …) per customer.
+            "IndexName": "customer_id-status-index",
+            "KeySchema": [
+                {"AttributeName": "customer_id", "KeyType": "HASH"},
+                {"AttributeName": "status", "KeyType": "RANGE"},
+            ],
+            "Projection": {"ProjectionType": "ALL"},
+        },
+    ],
+    "Tags": [{"Key": "Project", "Value": "msp-client-portal"}],
+}
+# Additional fields stored per item:
+#   customer_name  str   display name from the Customers table
+#   hostname       str   agent hostname
+#   platform       str   windows | mac | linux
+#   policy_name    str   Huntress policy applied to this agent
+#   last_seen_at   str   ISO-8601 last heartbeat from the agent
+#   version        str   Huntress agent version string
+
+HUNTRESS_INCIDENTS_TABLE: dict[str, Any] = {
+    "TableName": "HuntressIncidents",
+    **_PAY_PER_REQUEST,
+    "AttributeDefinitions": [
+        {"AttributeName": "incident_id", "AttributeType": "S"},
+        {"AttributeName": "customer_id", "AttributeType": "S"},
+        {"AttributeName": "created_at", "AttributeType": "S"},  # ISO-8601
+        {"AttributeName": "severity", "AttributeType": "S"},
+    ],
+    "KeySchema": [
+        {"AttributeName": "incident_id", "KeyType": "HASH"},
+    ],
+    "GlobalSecondaryIndexes": [
+        {
+            # All Huntress incidents for a customer, sorted by creation time.
+            "IndexName": "customer_id-created_at-index",
+            "KeySchema": [
+                {"AttributeName": "customer_id", "KeyType": "HASH"},
+                {"AttributeName": "created_at", "KeyType": "RANGE"},
+            ],
+            "Projection": {"ProjectionType": "ALL"},
+        },
+        {
+            # Incidents grouped by severity (critical, high, medium, low).
+            "IndexName": "customer_id-severity-index",
+            "KeySchema": [
+                {"AttributeName": "customer_id", "KeyType": "HASH"},
+                {"AttributeName": "severity", "KeyType": "RANGE"},
+            ],
+            "Projection": {"ProjectionType": "ALL"},
+        },
+    ],
+    "Tags": [{"Key": "Project", "Value": "msp-client-portal"}],
+}
+# Additional fields stored per item:
+#   customer_name  str   display name from the Customers table
+#   summary        str   short description of the incident
+#   severity       str   critical | high | medium | low
+#   status         str   open | closed | in_progress
+#   type           str   Huntress incident type category
+#   remediation    str   recommended remediation steps
+#   created_at     str   ISO-8601 incident creation timestamp
+
+SCOUTDNS_STATS_TABLE: dict[str, Any] = {
+    "TableName": "ScoutDNSStats",
+    **_PAY_PER_REQUEST,
+    "AttributeDefinitions": [
+        {"AttributeName": "stat_id", "AttributeType": "S"},
+        {"AttributeName": "customer_id", "AttributeType": "S"},
+        {"AttributeName": "date", "AttributeType": "S"},  # YYYY-MM-DD
+    ],
+    "KeySchema": [
+        {"AttributeName": "stat_id", "KeyType": "HASH"},
+    ],
+    "GlobalSecondaryIndexes": [
+        {
+            # Daily DNS stats for a customer, sorted by date.
+            "IndexName": "customer_id-date-index",
+            "KeySchema": [
+                {"AttributeName": "customer_id", "KeyType": "HASH"},
+                {"AttributeName": "date", "KeyType": "RANGE"},
+            ],
+            "Projection": {"ProjectionType": "ALL"},
+        },
+    ],
+    "Tags": [{"Key": "Project", "Value": "msp-client-portal"}],
+}
+# stat_id is a composite key: f"{customer_id}#{date}"
+# Additional fields stored per item:
+#   customer_name        str        display name from the Customers table
+#   total_queries        int        total DNS queries for the day
+#   blocked_queries      int        number of blocked queries
+#   allowed_queries      int        number of allowed queries
+#   top_blocked_domains  list[str]  top domains that were blocked
+#   date                 str        YYYY-MM-DD
+
+O365_LICENSES_TABLE: dict[str, Any] = {
+    "TableName": "O365Licenses",
+    **_PAY_PER_REQUEST,
+    "AttributeDefinitions": [
+        {"AttributeName": "license_id", "AttributeType": "S"},
+        {"AttributeName": "customer_id", "AttributeType": "S"},
+    ],
+    "KeySchema": [
+        {"AttributeName": "license_id", "KeyType": "HASH"},
+    ],
+    "GlobalSecondaryIndexes": [
+        {
+            # All license SKUs for a customer.
+            "IndexName": "customer_id-index",
+            "KeySchema": [
+                {"AttributeName": "customer_id", "KeyType": "HASH"},
+            ],
+            "Projection": {"ProjectionType": "ALL"},
+        },
+    ],
+    "Tags": [{"Key": "Project", "Value": "msp-client-portal"}],
+}
+# license_id is a composite key: f"{customer_id}#{sku_id}"
+# Additional fields stored per item:
+#   customer_name    str   display name from the Customers table
+#   sku_name         str   human-readable SKU name (e.g. "Microsoft 365 Business Premium")
+#   total_units      int   total purchased licenses
+#   consumed_units   int   currently assigned licenses
+#   available_units  int   total_units - consumed_units
+#   last_synced_at   str   ISO-8601 timestamp of last sync
+
+O365_MAILBOXES_TABLE: dict[str, Any] = {
+    "TableName": "O365Mailboxes",
+    **_PAY_PER_REQUEST,
+    "AttributeDefinitions": [
+        {"AttributeName": "mailbox_id", "AttributeType": "S"},
+        {"AttributeName": "customer_id", "AttributeType": "S"},
+        {"AttributeName": "last_synced_at", "AttributeType": "S"},  # ISO-8601
+    ],
+    "KeySchema": [
+        {"AttributeName": "mailbox_id", "KeyType": "HASH"},
+    ],
+    "GlobalSecondaryIndexes": [
+        {
+            # All mailboxes for a customer, sorted by sync time.
+            "IndexName": "customer_id-last_synced_at-index",
+            "KeySchema": [
+                {"AttributeName": "customer_id", "KeyType": "HASH"},
+                {"AttributeName": "last_synced_at", "KeyType": "RANGE"},
+            ],
+            "Projection": {"ProjectionType": "ALL"},
+        },
+    ],
+    "Tags": [{"Key": "Project", "Value": "msp-client-portal"}],
+}
+# mailbox_id is the user principal name (UPN / email address)
+# Additional fields stored per item:
+#   customer_name   str   display name from the Customers table
+#   display_name    str   user display name
+#   email           str   primary SMTP address
+#   mailbox_type    str   UserMailbox | SharedMailbox | RoomMailbox | …
+#   total_size_mb   int   mailbox quota in MB
+#   used_size_mb    int   currently used storage in MB
+#   item_count      int   total number of items in the mailbox
+#   last_synced_at  str   ISO-8601 timestamp of last sync
+
+
 # Ordered so dependencies come first (Tenants before child entities).
 ALL_TABLES: list[dict[str, Any]] = [
     TENANTS_TABLE,
@@ -473,6 +701,12 @@ ALL_TABLES: list[dict[str, Any]] = [
     EC2_INSTANCES_TABLE,
     EC2_VOLUMES_TABLE,
     EC2_SNAPSHOTS_TABLE,
+    SYNCRO_TICKETS_TABLE,
+    HUNTRESS_AGENTS_TABLE,
+    HUNTRESS_INCIDENTS_TABLE,
+    SCOUTDNS_STATS_TABLE,
+    O365_LICENSES_TABLE,
+    O365_MAILBOXES_TABLE,
 ]
 
 
