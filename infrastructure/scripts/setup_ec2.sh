@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# EC2 server setup script — run once on a fresh Amazon Linux 2023 or Ubuntu 22.04 instance.
+# EC2 server setup script — run once on a fresh Ubuntu 24.04 LTS instance.
+# Also compatible with Ubuntu 22.04 and Amazon Linux 2023.
 # Usage: sudo bash setup_ec2.sh
 set -euo pipefail
 
@@ -10,10 +11,19 @@ DOMAIN="${DOMAIN:-}"   # Set to your domain name for Nginx server_name
 
 echo "==> Installing system packages"
 if command -v dnf &>/dev/null; then
-    dnf install -y python3.12 python3.12-pip python3.12-devel nginx git nodejs npm
+    # Amazon Linux 2023
+    dnf install -y python3.12 python3.12-pip python3.12-devel nginx git
+    # Install Node.js 20 LTS via NodeSource
+    curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
+    dnf install -y nodejs
 else
+    # Ubuntu 24.04 / 22.04
     apt-get update -y
-    apt-get install -y python3.12 python3.12-venv python3-pip nginx git nodejs npm
+    apt-get install -y python3.12 python3.12-venv python3-pip nginx git curl
+
+    # Install Node.js 20 LTS via NodeSource (Ubuntu ships an older version by default)
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+    apt-get install -y nodejs
 fi
 
 echo "==> Cloning repository"
