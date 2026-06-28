@@ -43,7 +43,7 @@ python3.12 -m venv "$APP_DIR/.venv"
 
 echo "==> Building React frontend"
 cd "$APP_DIR/frontend"
-npm ci
+npm install
 npm run build
 
 echo "==> Writing systemd service"
