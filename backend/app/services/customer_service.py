@@ -61,9 +61,17 @@ def verify_password(plaintext: str, hashed: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def create_customer(email: str, password: str, name: str = "") -> dict:
+def create_customer(email: str, password: str, name: str = "", customer_id: str | None = None) -> dict:
     """
     Create a new customer record.
+
+    Parameters
+    ----------
+    customer_id:
+        Optional explicit ID.  When provided (e.g. the EC2 "Client" tag value
+        such as "CENTRICITY-CA") it is used as the DynamoDB primary key so the
+        inventory sync can resolve tag values directly.  When omitted a UUID is
+        generated automatically.
 
     Returns the created item dict.
     Raises ``ValueError`` if the email is already registered.
@@ -75,7 +83,7 @@ def create_customer(email: str, password: str, name: str = "") -> dict:
     if existing:
         raise ValueError(f"Email already registered: {email}")
 
-    customer_id = str(uuid.uuid4())
+    customer_id = customer_id or str(uuid.uuid4())
     item = {
         "customer_id": customer_id,
         "email": email.lower().strip(),
