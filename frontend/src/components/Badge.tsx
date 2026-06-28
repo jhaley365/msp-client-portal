@@ -1,18 +1,38 @@
 const STATE_COLORS: Record<string, string> = {
-  running:    'bg-green-100 text-green-800',
-  available:  'bg-green-100 text-green-800',
-  completed:  'bg-green-100 text-green-800',
-  stopped:    'bg-yellow-100 text-yellow-800',
-  'in-use':   'bg-blue-100 text-blue-800',
-  pending:    'bg-blue-100 text-blue-800',
-  terminated: 'bg-red-100 text-red-800',
-  error:      'bg-red-100 text-red-800',
+  // green
+  running: 'bg-green-100 text-green-700',
+  active: 'bg-green-100 text-green-700',
+  online: 'bg-green-100 text-green-700',
+  completed: 'bg-green-100 text-green-700',
+  enabled: 'bg-green-100 text-green-700',
+  available: 'bg-green-100 text-green-700',
+  resolved: 'bg-green-100 text-green-700',
+  // yellow
+  stopped: 'bg-yellow-100 text-yellow-700',
+  offline: 'bg-yellow-100 text-yellow-700',
+  warning: 'bg-yellow-100 text-yellow-700',
+  pending: 'bg-yellow-100 text-yellow-700',
+  // red
+  terminated: 'bg-red-100 text-red-700',
+  error: 'bg-red-100 text-red-700',
+  critical: 'bg-red-100 text-red-700',
+  // blue
+  open: 'bg-blue-100 text-blue-700',
+  'in-use': 'bg-blue-100 text-blue-700',
+  'in-progress': 'bg-blue-100 text-blue-700',
+  investigating: 'bg-blue-100 text-blue-700',
+  // purple
+  high: 'bg-purple-100 text-purple-700',
+  // orange
+  medium: 'bg-orange-100 text-orange-700',
+  low: 'bg-gray-100 text-gray-600',
 }
 
 export default function Badge({ state }: { state: string }) {
-  const cls = STATE_COLORS[state] ?? 'bg-gray-100 text-gray-700'
+  const key = (state ?? '').toLowerCase()
+  const cls = STATE_COLORS[key] ?? 'bg-gray-100 text-gray-600'
   return (
-    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${cls}`}>
+    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${cls}`}>
       {state}
     </span>
   )
