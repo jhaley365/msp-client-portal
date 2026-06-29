@@ -77,7 +77,7 @@ class SyncroTicket(BaseModel):
     """A single support ticket as returned by the Syncro API."""
 
     id: int
-    ticket_id: int = Field(alias="id")  # convenience alias stored alongside
+    number: int | None = None          # human-readable ticket number shown in Syncro UI
     subject: str
     status: str
     priority: str | None = None

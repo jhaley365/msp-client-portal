@@ -192,7 +192,9 @@ async def _sync_all(customers: list[dict], synced_at: str) -> list[dict]:
             for ticket in raw_tickets:
                 item: dict[str, Any] = {
                     # Use string ticket_id as the DynamoDB PK.
-                    "ticket_id": str(ticket.get("id", ticket.get("ticket_id", ""))),
+                    "ticket_id": str(ticket.get("id", "")),
+                    # number is the human-readable ticket number shown in Syncro UI.
+                    "ticket_number": str(ticket.get("number") or ticket.get("id", "")),
                     "customer_id": customer_id,
                     "customer_name": customer_name,
                     "subject": ticket.get("subject", ""),

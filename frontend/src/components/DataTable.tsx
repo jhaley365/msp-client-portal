@@ -60,7 +60,7 @@ export default function DataTable<T extends Record<string, any>>({
               data.map((row, i) => (
                 <tr key={(row[keyField] as string) ?? i} className="hover:bg-gray-50 transition-colors">
                   {columns.map(col => (
-                    <td key={col.key} className={`px-4 py-3 whitespace-nowrap ${col.className ?? ''}`}>
+                    <td key={col.key} className={`px-4 py-3 ${col.className ?? 'whitespace-nowrap'}`}>
                       {col.render ? col.render(row) : String(row[col.key] ?? '—')}
                     </td>
                   ))}

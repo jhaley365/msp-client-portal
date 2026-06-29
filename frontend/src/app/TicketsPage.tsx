@@ -60,13 +60,13 @@ export default function TicketsPage() {
   ]
 
   const columns: Column<Ticket>[] = [
+    { key: 'created_at', header: 'Created', render: (row) => new Date(row.created_at).toLocaleDateString() },
+    { key: 'updated_at', header: 'Updated', render: (row) => new Date(row.updated_at).toLocaleDateString() },
     { key: 'ticket_number', header: 'Ticket #', render: (row) => `#${row.ticket_number}` },
-    { key: 'subject', header: 'Subject' },
+    { key: 'subject', header: 'Subject', className: 'max-w-xs whitespace-normal break-words' },
     { key: 'status', header: 'Status', render: (row) => <Badge state={row.status} /> },
     { key: 'priority', header: 'Priority' },
     { key: 'assigned_tech', header: 'Assigned Tech' },
-    { key: 'created_at', header: 'Created', render: (row) => new Date(row.created_at).toLocaleDateString() },
-    { key: 'updated_at', header: 'Updated', render: (row) => new Date(row.updated_at).toLocaleDateString() },
   ]
 
   return (
