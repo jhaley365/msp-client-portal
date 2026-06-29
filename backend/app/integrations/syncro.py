@@ -291,6 +291,7 @@ class SyncroClient:
         customer_id: int | str,
         status: str | None = None,
         page: int = 1,
+        since_date: str | None = None,
     ) -> SyncroTicketList:
         """Fetch a paginated list of tickets for a customer.
 
@@ -304,6 +305,9 @@ class SyncroClient:
         page:
             1-based page number.  Use ``SyncroTicketList.total_pages`` to
             determine whether additional pages exist.
+        since_date:
+            ISO-8601 date string (e.g. ``"2026-01-01"``).  When provided,
+            only tickets created on or after this date are returned.
 
         Returns
         -------
@@ -318,6 +322,8 @@ class SyncroClient:
         params: dict[str, Any] = {"customer_id": customer_id, "page": page}
         if status is not None:
             params["status"] = status
+        if since_date is not None:
+            params["created_at[gt]"] = since_date
 
         data = await self._request("GET", "/tickets", params=params)
         return SyncroTicketList.model_validate(data)

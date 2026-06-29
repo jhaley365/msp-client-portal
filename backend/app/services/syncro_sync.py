@@ -33,6 +33,10 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
+# Only sync tickets created on or after this date (YYYY-MM-DD).
+# Set to None to sync all historical tickets.
+_SINCE_DATE: str | None = f"{datetime.now(tz=timezone.utc).year}-01-01"
+
 import boto3
 from botocore.exceptions import ClientError
 
@@ -128,7 +132,7 @@ async def _fetch_all_tickets_for_customer(
     while True:
         try:
             ticket_list = await client.get_tickets(
-                customer_id=syncro_customer_id, page=page
+                customer_id=syncro_customer_id, page=page, since_date=_SINCE_DATE
             )
         except SyncroAPIError as exc:
             logger.error(
