@@ -21,3 +21,4 @@ samconfig.toml
 *.tfstate
 *.tfstate.backup
 .terraform/
+.claude/
