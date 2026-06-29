@@ -30,13 +30,13 @@ def _table(name: str) -> Any:
 
 @router.get("/summary")
 def summary(user: dict = Depends(get_current_user)) -> dict:
-    """Return ticket status counts for the Syncro dashboard card.
-
-    Queries the ``customer_id-status-index`` GSI using ``Select=COUNT`` once
-    per status so the response stays lightweight.
-    """
+    """Return ticket status counts for the Syncro dashboard card."""
     customer_id: str = user["customer_id"]
     tbl = _table(TABLE_SYNCRO_TICKETS)
+
+    # Actual Syncro status strings grouped into logical buckets.
+    OPEN_STATUSES = ["New", "In Progress", "Customer Reply", "Waiting On Customer", "Scheduled"]
+    RESOLVED_STATUSES = ["Resolved", "Closed", "Cancelled"]
 
     def _count_status(status_value: str) -> int:
         resp = tbl.query(
@@ -56,9 +56,9 @@ def summary(user: dict = Depends(get_current_user)) -> dict:
         )
         return resp.get("Count", 0)
 
-    open_count = _count_status("open")
-    closed_count = _count_status("closed")
-    in_progress_count = _count_status("in_progress")
+    open_count = sum(_count_status(s) for s in OPEN_STATUSES)
+    closed_count = sum(_count_status(s) for s in RESOLVED_STATUSES)
+    in_progress_count = _count_status("In Progress") + _count_status("Customer Reply") + _count_status("Waiting On Customer")
     total = _count_all()
 
     return {
