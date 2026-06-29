@@ -4,7 +4,7 @@ import KpiCard from '../components/KpiCard'
 import DataTable, { Column } from '../components/DataTable'
 import Badge from '../components/Badge'
 
-type StatusFilter = 'all' | 'New' | 'In Progress' | 'Customer Reply' | 'Waiting On Customer' | 'Resolved'
+type StatusFilter = 'all' | 'open' | 'New' | 'In Progress' | 'Waiting on Customer' | 'Waiting for Parts' | 'Scheduled' | 'Customer Reply' | 'Escalated to MSP' | 'Abandoned' | 'Resolved'
 
 interface Ticket {
   ticket_number: string | number
@@ -53,12 +53,17 @@ export default function TicketsPage() {
   }, [statusFilter])
 
   const filters: { label: string; value: StatusFilter }[] = [
-    { label: 'All', value: 'all' },
+    { label: 'Open', value: 'open' },
     { label: 'New', value: 'New' },
     { label: 'In Progress', value: 'In Progress' },
+    { label: 'Waiting on Customer', value: 'Waiting on Customer' },
+    { label: 'Waiting for Parts', value: 'Waiting for Parts' },
+    { label: 'Scheduled', value: 'Scheduled' },
     { label: 'Customer Reply', value: 'Customer Reply' },
-    { label: 'Waiting On Customer', value: 'Waiting On Customer' },
+    { label: 'Escalated to MSP', value: 'Escalated to MSP' },
+    { label: 'Abandoned', value: 'Abandoned' },
     { label: 'Resolved', value: 'Resolved' },
+    { label: 'All', value: 'all' },
   ]
 
   const columns: Column<Ticket>[] = [

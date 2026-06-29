@@ -34,8 +34,11 @@ def summary(user: dict = Depends(get_current_user)) -> dict:
     customer_id: str = user["customer_id"]
     tbl = _table(TABLE_SYNCRO_TICKETS)
 
-    # Actual Syncro status strings grouped into logical buckets.
-    OPEN_STATUSES = ["New", "In Progress", "Customer Reply", "Waiting On Customer", "Scheduled"]
+    # All non-resolved statuses are considered "open".
+    OPEN_STATUSES = [
+        "New", "In Progress", "Waiting on Customer", "Waiting for Parts",
+        "Scheduled", "Customer Reply", "Escalated to MSP", "Abandoned",
+    ]
     RESOLVED_STATUSES = ["Resolved", "Closed", "Cancelled"]
 
     def _count_status(status_value: str) -> int:
@@ -58,14 +61,13 @@ def summary(user: dict = Depends(get_current_user)) -> dict:
 
     open_count = sum(_count_status(s) for s in OPEN_STATUSES)
     closed_count = sum(_count_status(s) for s in RESOLVED_STATUSES)
-    in_progress_count = _count_status("In Progress") + _count_status("Customer Reply") + _count_status("Waiting On Customer")
     total = _count_all()
 
     return {
         "total": total,
         "open": open_count,
         "closed": closed_count,
-        "in_progress": in_progress_count,
+        "in_progress": _count_status("In Progress"),
     }
 
 
@@ -91,6 +93,10 @@ def list_tickets(
     customer_id: str = user["customer_id"]
     tbl = _table(TABLE_SYNCRO_TICKETS)
 
+    # "open" is a virtual filter meaning all non-Resolved statuses.
+    open_filter = status == "open"
+    actual_status = None if (not status or open_filter) else status
+
     kwargs: dict[str, Any] = {
         "IndexName": "customer_id-created_at-index",
         "KeyConditionExpression": Key("customer_id").eq(customer_id),
@@ -98,23 +104,21 @@ def list_tickets(
         "ScanIndexForward": False,
     }
 
-    if status:
-        # Use the status index when filtering; fall back to created_at index
-        # for ordering within the filtered results by querying only that status.
+    if actual_status:
         kwargs["IndexName"] = "customer_id-status-index"
-        kwargs["KeyConditionExpression"] = Key("customer_id").eq(
-            customer_id
-        ) & Key("status").eq(status)
-        # Remove ScanIndexForward since the sort key is status (string) not
-        # a timestamp — ordering is lexicographic.  Keep for consistency.
+        kwargs["KeyConditionExpression"] = (
+            Key("customer_id").eq(customer_id) & Key("status").eq(actual_status)
+        )
+
+    if open_filter:
+        from boto3.dynamodb.conditions import Attr
+        kwargs["FilterExpression"] = Attr("status").ne("Resolved")
 
     if last_key:
-        if status:
+        if actual_status:
             kwargs["ExclusiveStartKey"] = {
                 "customer_id": customer_id,
-                "status": status,
-                # ticket_id is the table PK and must be included in the ESK
-                # when querying a GSI; pass the value supplied by the client.
+                "status": actual_status,
                 "ticket_id": last_key,
             }
         else:
@@ -126,9 +130,8 @@ def list_tickets(
 
     resp = tbl.query(**kwargs)
 
-    # Determine the appropriate next_key field based on the index used.
     last_evaluated = resp.get("LastEvaluatedKey", {})
-    if status:
+    if actual_status:
         next_key = last_evaluated.get("ticket_id")
     else:
         next_key = last_evaluated.get("created_at")
