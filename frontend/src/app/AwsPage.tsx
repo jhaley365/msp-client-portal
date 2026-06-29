@@ -60,7 +60,7 @@ export default function AwsPage() {
     try {
       const params: Record<string, string> = {}
       if (append && lastKeyInstances) params.last_key = lastKeyInstances
-      const { data } = await api.get('/instances', { params })
+      const { data } = await api.get('/inventory/instances', { params })
       setInstances((prev) => append ? [...prev, ...data.items] : data.items)
       setLastKeyInstances(data.last_key ?? null)
       setHasMoreInstances(!!data.last_key)
@@ -76,7 +76,7 @@ export default function AwsPage() {
     try {
       const params: Record<string, string> = {}
       if (append && lastKeyVolumes) params.last_key = lastKeyVolumes
-      const { data } = await api.get('/volumes', { params })
+      const { data } = await api.get('/inventory/volumes', { params })
       setVolumes((prev) => append ? [...prev, ...data.items] : data.items)
       setLastKeyVolumes(data.last_key ?? null)
       setHasMoreVolumes(!!data.last_key)
@@ -92,7 +92,7 @@ export default function AwsPage() {
     try {
       const params: Record<string, string> = {}
       if (append && lastKeySnapshots) params.last_key = lastKeySnapshots
-      const { data } = await api.get('/snapshots', { params })
+      const { data } = await api.get('/inventory/snapshots', { params })
       setSnapshots((prev) => append ? [...prev, ...data.items] : data.items)
       setLastKeySnapshots(data.last_key ?? null)
       setHasMoreSnapshots(!!data.last_key)
@@ -112,7 +112,7 @@ export default function AwsPage() {
   const instanceColumns: Column<Instance>[] = [
     { key: 'instance_id', header: 'Instance ID' },
     { key: 'instance_type', header: 'Type' },
-    { key: 'state', header: 'State', render: (row) => <Badge status={row.state} /> },
+    { key: 'state', header: 'State', render: (row) => <Badge state={row.state} /> },
     { key: 'region', header: 'Region' },
     { key: 'private_ip', header: 'Private IP' },
     { key: 'public_ip', header: 'Public IP' },
@@ -124,7 +124,7 @@ export default function AwsPage() {
     { key: 'volume_id', header: 'Volume ID' },
     { key: 'size', header: 'Size', render: (row) => `${row.size} GB` },
     { key: 'volume_type', header: 'Type' },
-    { key: 'state', header: 'State', render: (row) => <Badge status={row.state} /> },
+    { key: 'state', header: 'State', render: (row) => <Badge state={row.state} /> },
     { key: 'availability_zone', header: 'AZ' },
     { key: 'encrypted', header: 'Encrypted', render: (row) => row.encrypted ? '🔒' : '—' },
     { key: 'attachments', header: 'Attached To', render: (row) => row.attachments?.[0]?.instance_id ?? '—' },
@@ -135,7 +135,7 @@ export default function AwsPage() {
     { key: 'snapshot_id', header: 'Snapshot ID' },
     { key: 'volume_id', header: 'Volume ID' },
     { key: 'volume_size', header: 'Size', render: (row) => `${row.volume_size} GB` },
-    { key: 'state', header: 'State', render: (row) => <Badge status={row.state} /> },
+    { key: 'state', header: 'State', render: (row) => <Badge state={row.state} /> },
     { key: 'progress', header: 'Progress' },
     { key: 'encrypted', header: 'Encrypted', render: (row) => row.encrypted ? '🔒' : '—' },
     { key: 'description', header: 'Description' },

@@ -7,7 +7,8 @@ export interface Column<T> {
   className?: string
 }
 
-interface Props<T> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+interface Props<T extends Record<string, any>> {
   columns: Column<T>[]
   data: T[]
   loading?: boolean
@@ -29,7 +30,8 @@ function SkeletonRow({ cols }: { cols: number }) {
   )
 }
 
-export default function DataTable<T extends Record<string, unknown>>({
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default function DataTable<T extends Record<string, any>>({
   columns, data, loading, emptyMessage = 'No data found.', onLoadMore, hasMore, keyField = 'id',
 }: Props<T>) {
   return (

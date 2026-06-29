@@ -52,7 +52,7 @@ export default function O365Page() {
   const mailboxColumns: Column<Mailbox>[] = [
     { key: 'display_name', header: 'Display Name' },
     { key: 'email', header: 'Email' },
-    { key: 'mailbox_type', header: 'Type', render: (row) => <Badge status={row.mailbox_type} /> },
+    { key: 'mailbox_type', header: 'Type', render: (row) => <Badge state={row.mailbox_type} /> },
     { key: 'size_mb', header: 'Size MB' },
     { key: 'item_count', header: 'Items' },
   ]
@@ -65,17 +65,17 @@ export default function O365Page() {
         <KpiCard
           label="Total Licenses"
           value={loading ? '…' : (licenses.length ? totalLicenses : '--')}
-          color="border-blue-500"
+          accentColor="border-blue-500"
         />
         <KpiCard
           label="Used Licenses"
           value={loading ? '…' : (licenses.length ? usedLicenses : '--')}
-          color="border-orange-500"
+          accentColor="border-orange-500"
         />
         <KpiCard
           label="Available"
           value={loading ? '…' : (licenses.length ? availableLicenses : '--')}
-          color="border-green-500"
+          accentColor="border-green-500"
         />
       </div>
 

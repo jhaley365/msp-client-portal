@@ -57,12 +57,12 @@ export default function DnsPage() {
       <h1 className="text-xl font-bold text-gray-800">DNS — ScoutDNS</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <KpiCard label="Total Queries" value={summary?.total_queries ?? '--'} color="border-blue-500" />
-        <KpiCard label="Blocked Queries" value={summary?.blocked_queries ?? '--'} color="border-red-500" />
+        <KpiCard label="Total Queries" value={summary?.total_queries ?? '--'} accentColor="border-blue-500" />
+        <KpiCard label="Blocked Queries" value={summary?.blocked_queries ?? '--'} accentColor="border-red-500" />
         <KpiCard
           label="Block Rate"
           value={summary?.block_rate != null ? `${summary.block_rate}%` : '--'}
-          color="border-orange-500"
+          accentColor="border-orange-500"
         />
       </div>
 

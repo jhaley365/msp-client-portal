@@ -48,15 +48,15 @@ export default function SecurityPage() {
   const agentColumns: Column<Agent>[] = [
     { key: 'hostname', header: 'Hostname' },
     { key: 'platform', header: 'Platform' },
-    { key: 'status', header: 'Status', render: (row) => <Badge status={row.status} /> },
+    { key: 'status', header: 'Status', render: (row) => <Badge state={row.status} /> },
     { key: 'policy', header: 'Policy' },
     { key: 'last_seen', header: 'Last Seen', render: (row) => new Date(row.last_seen).toLocaleDateString() },
   ]
 
   const incidentColumns: Column<Incident>[] = [
     { key: 'summary', header: 'Summary' },
-    { key: 'severity', header: 'Severity', render: (row) => <Badge status={row.severity} /> },
-    { key: 'status', header: 'Status', render: (row) => <Badge status={row.status} /> },
+    { key: 'severity', header: 'Severity', render: (row) => <Badge state={row.severity} /> },
+    { key: 'status', header: 'Status', render: (row) => <Badge state={row.status} /> },
     { key: 'type', header: 'Type' },
     { key: 'created_at', header: 'Created', render: (row) => new Date(row.created_at).toLocaleDateString() },
   ]
@@ -66,10 +66,10 @@ export default function SecurityPage() {
       <h1 className="text-xl font-bold text-gray-800">Security — Huntress</h1>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <KpiCard label="Total Agents" value={summary?.total_agents ?? '--'} color="border-gray-400" />
-        <KpiCard label="Online Agents" value={summary?.online_agents ?? '--'} color="border-green-500" />
-        <KpiCard label="Open Incidents" value={summary?.open_incidents ?? '--'} color="border-orange-500" />
-        <KpiCard label="Critical Incidents" value={summary?.critical_incidents ?? '--'} color="border-red-500" />
+        <KpiCard label="Total Agents" value={summary?.total_agents ?? '--'} accentColor="border-gray-400" />
+        <KpiCard label="Online Agents" value={summary?.online_agents ?? '--'} accentColor="border-green-500" />
+        <KpiCard label="Open Incidents" value={summary?.open_incidents ?? '--'} accentColor="border-orange-500" />
+        <KpiCard label="Critical Incidents" value={summary?.critical_incidents ?? '--'} accentColor="border-red-500" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

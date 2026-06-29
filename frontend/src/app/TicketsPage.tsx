@@ -62,7 +62,7 @@ export default function TicketsPage() {
   const columns: Column<Ticket>[] = [
     { key: 'ticket_number', header: 'Ticket #', render: (row) => `#${row.ticket_number}` },
     { key: 'subject', header: 'Subject' },
-    { key: 'status', header: 'Status', render: (row) => <Badge status={row.status} /> },
+    { key: 'status', header: 'Status', render: (row) => <Badge state={row.status} /> },
     { key: 'priority', header: 'Priority' },
     { key: 'assigned_tech', header: 'Assigned Tech' },
     { key: 'created_at', header: 'Created', render: (row) => new Date(row.created_at).toLocaleDateString() },
@@ -87,8 +87,8 @@ export default function TicketsPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard label="Total Tickets" value={summary?.total ?? '--'} />
-        <KpiCard label="Open Tickets" value={summary?.open ?? '--'} color="border-orange-500" />
-        <KpiCard label="Avg Response Time" value="--" color="border-gray-400" />
+        <KpiCard label="Open Tickets" value={summary?.open ?? '--'} accentColor="border-orange-500" />
+        <KpiCard label="Avg Response Time" value="--" accentColor="border-gray-400" />
       </div>
 
       <div className="section-card">
