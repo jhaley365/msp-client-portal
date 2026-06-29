@@ -77,12 +77,17 @@ def list_instances(
     last_key: str | None = Query(default=None),
     user: dict = Depends(get_current_user),
 ) -> dict:
-    return _query_customer(
+    result = _query_customer(
         "EC2Instances",
         "customer_id-last_synced_at-index",
         user["customer_id"],
         last_key,
     )
+    result["items"] = sorted(
+        result["items"],
+        key=lambda x: (x.get("name_tag") or "").lower(),
+    )
+    return result
 
 
 # ── Volumes ───────────────────────────────────────────────────────────────────

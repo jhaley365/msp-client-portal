@@ -7,6 +7,7 @@ type Tab = 'Instances' | 'Volumes' | 'Snapshots'
 
 interface Instance {
   instance_id: string
+  name_tag: string
   instance_type: string
   state: string
   region: string
@@ -110,6 +111,7 @@ export default function AwsPage() {
   }, [activeTab])
 
   const instanceColumns: Column<Instance>[] = [
+    { key: 'name_tag', header: 'Name', render: (row) => row.name_tag || <span className="text-gray-400 italic">—</span> },
     { key: 'instance_id', header: 'Instance ID' },
     { key: 'instance_type', header: 'Type' },
     { key: 'state', header: 'State', render: (row) => <Badge state={row.state} /> },

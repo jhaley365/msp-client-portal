@@ -194,6 +194,7 @@ def collect_instances(region: str, synced_at: str, cache: CustomerCache) -> list
                 "instance_id": inst["InstanceId"],
                 "customer_id": customer_id,
                 "client_tag": client_tag,
+                "name_tag": tags.get("Name", ""),
                 "state": state,
                 "instance_type": inst.get("InstanceType", ""),
                 "region": region,
