@@ -253,7 +253,7 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
 
     # ── Incidents ─────────────────────────────────────────────────────────────
 
-    raw_incidents = _paginate_huntress(session, "/incidents", "incidents")
+    raw_incidents = _paginate_huntress(session, "/incident_reports", "incident_reports")
     logger.info("Fetched %d Huntress incidents", len(raw_incidents))
 
     incident_items: list[dict] = []
