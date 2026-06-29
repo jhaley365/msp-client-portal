@@ -63,8 +63,8 @@ export default function AwsPage() {
       if (append && lastKeyInstances) params.last_key = lastKeyInstances
       const { data } = await api.get('/inventory/instances', { params })
       setInstances((prev) => append ? [...prev, ...data.items] : data.items)
-      setLastKeyInstances(data.last_key ?? null)
-      setHasMoreInstances(!!data.last_key)
+      setLastKeyInstances(data.next_key ?? null)
+      setHasMoreInstances(!!data.next_key)
     } catch {
       if (!append) setInstances([])
     } finally {
@@ -79,8 +79,8 @@ export default function AwsPage() {
       if (append && lastKeyVolumes) params.last_key = lastKeyVolumes
       const { data } = await api.get('/inventory/volumes', { params })
       setVolumes((prev) => append ? [...prev, ...data.items] : data.items)
-      setLastKeyVolumes(data.last_key ?? null)
-      setHasMoreVolumes(!!data.last_key)
+      setLastKeyVolumes(data.next_key ?? null)
+      setHasMoreVolumes(!!data.next_key)
     } catch {
       if (!append) setVolumes([])
     } finally {
@@ -95,8 +95,8 @@ export default function AwsPage() {
       if (append && lastKeySnapshots) params.last_key = lastKeySnapshots
       const { data } = await api.get('/inventory/snapshots', { params })
       setSnapshots((prev) => append ? [...prev, ...data.items] : data.items)
-      setLastKeySnapshots(data.last_key ?? null)
-      setHasMoreSnapshots(!!data.last_key)
+      setLastKeySnapshots(data.next_key ?? null)
+      setHasMoreSnapshots(!!data.next_key)
     } catch {
       if (!append) setSnapshots([])
     } finally {

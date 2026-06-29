@@ -37,8 +37,8 @@ export default function TicketsPage() {
       if (append && lastKey) params.last_key = lastKey
       const { data } = await api.get('/syncro/tickets', { params })
       setTickets((prev) => append ? [...prev, ...data.items] : data.items)
-      setLastKey(data.last_key ?? null)
-      setHasMore(!!data.last_key)
+      setLastKey(data.next_key ?? null)
+      setHasMore(!!data.next_key)
     } catch {
       if (!append) setTickets([])
     } finally {

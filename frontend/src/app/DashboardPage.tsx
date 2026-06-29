@@ -30,7 +30,7 @@ export default function DashboardPage() {
       api.get('/syncro/summary').then(r => setSyncro(r.data)),
       api.get('/huntress/summary').then(r => setHuntress(r.data)),
       api.get('/scoutdns/summary').then(r => setScout(r.data)),
-      api.get('/syncro/tickets?last_key=').then(r => setTickets(r.data.items?.slice(0, 5) ?? [])),
+      api.get('/syncro/tickets').then(r => setTickets(r.data.items?.slice(0, 5) ?? [])),
       api.get('/huntress/incidents').then(r => setIncidents(r.data.items?.slice(0, 5) ?? [])),
     ])
   }, [])
