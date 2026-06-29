@@ -168,16 +168,22 @@ class CustomerNameCache:
         self._cache: dict[str, tuple[str, str]] | None = None
 
     def _load(self) -> None:
-        """Scan the Customers table and populate the cache."""
+        """Scan the Customers table and populate the cache.
+
+        Prefers the ``huntress_org_name`` field for matching; falls back to
+        ``name`` when that field is absent.
+        """
         self._cache = {}
         kwargs: dict[str, Any] = {}
         while True:
             resp = self._table.scan(**kwargs)
             for item in resp.get("Items", []):
-                name: str = item.get("name", "")
                 cid: str = item.get("customer_id", "")
-                if name and cid:
-                    self._cache[name.lower()] = (cid, name)
+                display_name: str = item.get("name", "")
+                # huntress_org_name takes precedence for matching.
+                match_name: str = item.get("huntress_org_name") or display_name
+                if match_name and cid:
+                    self._cache[match_name.lower()] = (cid, display_name or match_name)
             last_key = resp.get("LastEvaluatedKey")
             if not last_key:
                 break
