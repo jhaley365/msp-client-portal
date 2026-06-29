@@ -222,6 +222,15 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
     cache = CustomerNameCache(tbl_customers)
     session = _huntress_session()
 
+    # ── Organizations map (org_id → org_name) ─────────────────────────────────
+    # Incident reports expose organization_id but not organization_name, so we
+    # pre-fetch the organizations list to resolve names for customer matching.
+    raw_orgs = _paginate_huntress(session, "/organizations", "organizations")
+    org_id_to_name: dict[int, str] = {
+        org["id"]: org.get("name", "") for org in raw_orgs if org.get("id")
+    }
+    logger.info("Loaded %d Huntress organizations", len(org_id_to_name))
+
     # ── Agents ────────────────────────────────────────────────────────────────
 
     raw_agents = _paginate_huntress(session, "/agents", "agents")
@@ -229,7 +238,7 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
 
     agent_items: list[dict] = []
     for agent in raw_agents:
-        org_name: str = agent.get("organization_name", "")
+        org_name: str = agent.get("organization_name", "") or org_id_to_name.get(agent.get("organization_id", 0), "")
         resolved = cache.resolve(org_name) if org_name else None
         customer_id = resolved[0] if resolved else "unassigned"
         customer_name = resolved[1] if resolved else org_name
@@ -251,28 +260,34 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
     if agent_items:
         _batch_write(tbl_agents, agent_items)
 
-    # ── Incidents ─────────────────────────────────────────────────────────────
+    # ── Incident Reports ──────────────────────────────────────────────────────
 
     raw_incidents = _paginate_huntress(session, "/incident_reports", "incident_reports")
-    logger.info("Fetched %d Huntress incidents", len(raw_incidents))
+    logger.info("Fetched %d Huntress incident reports", len(raw_incidents))
 
     incident_items: list[dict] = []
     for incident in raw_incidents:
-        org_name = incident.get("organization_name", "")
+        org_id = incident.get("organization_id", 0)
+        org_name = org_id_to_name.get(org_id, "")
         resolved = cache.resolve(org_name) if org_name else None
         customer_id = resolved[0] if resolved else "unassigned"
         customer_name = resolved[1] if resolved else org_name
+
+        indicator_types = incident.get("indicator_types") or []
+        incident_type = ", ".join(indicator_types) if indicator_types else ""
 
         item = {
             "incident_id": str(incident.get("id", "")),
             "customer_id": customer_id,
             "customer_name": customer_name,
+            "subject": incident.get("subject", ""),
             "summary": incident.get("summary", ""),
             "severity": incident.get("severity") or "unknown",
             "status": incident.get("status") or "unknown",
-            "type": incident.get("type", ""),
-            "remediation": incident.get("remediation", ""),
-            "created_at": incident.get("created_at", ""),
+            "type": incident_type,
+            "platform": incident.get("platform", ""),
+            "created_at": incident.get("sent_at") or incident.get("updated_at", ""),
+            "closed_at": incident.get("closed_at", ""),
             "last_synced_at": synced_at,
         }
         incident_items.append(item)
