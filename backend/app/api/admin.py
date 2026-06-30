@@ -32,7 +32,7 @@ def list_customers(user: dict = Depends(_require_admin)) -> list[dict]:
     tbl = _customers_table()
     items: list[dict] = []
     kwargs: dict[str, Any] = {
-        "ProjectionExpression": "customer_id, #n",
+        "ProjectionExpression": "customer_id, #n, hidden",
         "ExpressionAttributeNames": {"#n": "name"},
     }
     while True:
@@ -43,4 +43,5 @@ def list_customers(user: dict = Depends(_require_admin)) -> list[dict]:
             break
         kwargs["ExclusiveStartKey"] = last_key
 
-    return sorted(items, key=lambda x: (x.get("name") or x.get("customer_id", "")).lower())
+    visible = [i for i in items if not i.get("hidden")]
+    return sorted(visible, key=lambda x: (x.get("name") or x.get("customer_id", "")).lower())
