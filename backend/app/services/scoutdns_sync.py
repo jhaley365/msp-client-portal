@@ -188,7 +188,11 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
                           params={"period": _PERIOD, "organizationId": org_id})
         stats_data: dict = stats_resp.get("data", {}) if isinstance(stats_resp, dict) else {}
         allowed_requests = _to_decimal(stats_data.get("ALLOWED", 0))
-        blocked_requests = _to_decimal(stats_data.get("BLOCKED", 0) + stats_data.get("DROP", 0))
+        blocked_requests = _to_decimal(
+            stats_data.get("FORBIDDEN", 0)
+            + stats_data.get("BLOCKED", 0)
+            + stats_data.get("DROP", 0)
+        )
 
         # ── Threat stats ──────────────────────────────────────────────────────
         threats_resp = _get(sess, "/getThreatStats",
