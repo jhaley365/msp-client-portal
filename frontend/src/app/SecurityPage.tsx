@@ -7,8 +7,9 @@ import Badge from '../components/Badge'
 interface Agent {
   hostname: string
   platform: string
+  os: string
   status: string
-  policy_name: string
+  defender_status: string
   last_seen_at: string
 }
 
@@ -54,9 +55,9 @@ export default function SecurityPage() {
 
   const agentColumns: Column<Agent>[] = [
     { key: 'hostname', header: 'Hostname' },
-    { key: 'platform', header: 'Platform' },
+    { key: 'os', header: 'OS' },
     { key: 'status', header: 'Status', render: (row) => <Badge state={row.status} /> },
-    { key: 'policy_name', header: 'Policy' },
+    { key: 'defender_status', header: 'Defender' },
     { key: 'last_seen_at', header: 'Last Seen', render: (row) => fmtDate(row.last_seen_at) },
   ]
 

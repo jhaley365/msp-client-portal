@@ -26,7 +26,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import boto3
@@ -236,6 +236,9 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
     raw_agents = _paginate_huntress(session, "/agents", "agents")
     logger.info("Fetched %d Huntress agents", len(raw_agents))
 
+    # Threshold for considering an agent "online": seen within the last 60 minutes.
+    online_cutoff = datetime.now(tz=timezone.utc) - timedelta(minutes=60)
+
     agent_items: list[dict] = []
     for agent in raw_agents:
         org_name: str = agent.get("organization_name", "") or org_id_to_name.get(agent.get("organization_id", 0), "")
@@ -243,16 +246,24 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
         customer_id = resolved[0] if resolved else "unassigned"
         customer_name = resolved[1] if resolved else org_name
 
+        last_callback: str = agent.get("last_callback_at", "")
+        try:
+            last_callback_dt = datetime.fromisoformat(last_callback.replace("Z", "+00:00"))
+            status = "online" if last_callback_dt >= online_cutoff else "offline"
+        except (ValueError, AttributeError):
+            status = "unknown"
+
         item: dict[str, Any] = {
             "agent_id": str(agent.get("id", "")),
             "customer_id": customer_id,
             "customer_name": customer_name,
             "hostname": agent.get("hostname", ""),
             "platform": agent.get("platform", ""),
-            "policy_name": agent.get("policy_name", ""),
-            "status": agent.get("status") or "unknown",
-            "last_seen_at": agent.get("last_seen_at", ""),
+            "os": agent.get("os", ""),
+            "status": status,
+            "last_seen_at": last_callback,
             "version": agent.get("version", ""),
+            "defender_status": agent.get("defender_status", ""),
             "last_synced_at": synced_at,
         }
         agent_items.append(item)
