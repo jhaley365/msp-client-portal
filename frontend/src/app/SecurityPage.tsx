@@ -8,11 +8,12 @@ interface Agent {
   hostname: string
   platform: string
   status: string
-  policy: string
-  last_seen: string
+  policy_name: string
+  last_seen_at: string
 }
 
 interface Incident {
+  subject: string
   summary: string
   severity: string
   status: string
@@ -45,20 +46,27 @@ export default function SecurityPage() {
     }).finally(() => setLoading(false))
   }, [])
 
+  const fmtDate = (val: string) => {
+    if (!val) return '—'
+    const d = new Date(val)
+    return isNaN(d.getTime()) ? '—' : d.toLocaleDateString()
+  }
+
   const agentColumns: Column<Agent>[] = [
     { key: 'hostname', header: 'Hostname' },
     { key: 'platform', header: 'Platform' },
     { key: 'status', header: 'Status', render: (row) => <Badge state={row.status} /> },
-    { key: 'policy', header: 'Policy' },
-    { key: 'last_seen', header: 'Last Seen', render: (row) => new Date(row.last_seen).toLocaleDateString() },
+    { key: 'policy_name', header: 'Policy' },
+    { key: 'last_seen_at', header: 'Last Seen', render: (row) => fmtDate(row.last_seen_at) },
   ]
 
   const incidentColumns: Column<Incident>[] = [
-    { key: 'summary', header: 'Summary' },
+    { key: 'subject', header: 'Summary', render: (row) => row.subject || row.summary || '—',
+      className: 'max-w-xs whitespace-normal break-words' },
     { key: 'severity', header: 'Severity', render: (row) => <Badge state={row.severity} /> },
     { key: 'status', header: 'Status', render: (row) => <Badge state={row.status} /> },
     { key: 'type', header: 'Type' },
-    { key: 'created_at', header: 'Created', render: (row) => new Date(row.created_at).toLocaleDateString() },
+    { key: 'created_at', header: 'Created', render: (row) => fmtDate(row.created_at) },
   ]
 
   return (
