@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.admin import router as admin_router
 from app.api.auth import router as auth_router
 from app.api.huntress import router as huntress_router
 from app.api.inventory import router as inventory_router
@@ -24,6 +25,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router, prefix="/api")
+app.include_router(admin_router, prefix="/api")
 app.include_router(inventory_router, prefix="/api")
 app.include_router(syncro_router, prefix="/api")
 app.include_router(huntress_router, prefix="/api")

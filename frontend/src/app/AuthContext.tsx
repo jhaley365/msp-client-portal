@@ -1,10 +1,19 @@
 import { createContext, useContext, ReactNode } from 'react'
 import { useAuth } from '../hooks/useAuth'
 
+interface User {
+  customer_id: string
+  name: string
+  email: string
+  is_admin: boolean
+}
+
 interface AuthContextType {
-  user: { customer_id: string; name: string; email: string } | null
+  user: User | null
   login: (email: string, password: string) => Promise<void>
   logout: () => void
+  viewAsCustomerId: string
+  setViewAsCustomerId: (id: string) => void
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)

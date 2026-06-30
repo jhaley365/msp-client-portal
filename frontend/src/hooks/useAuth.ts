@@ -5,6 +5,7 @@ interface User {
   customer_id: string
   name: string
   email: string
+  is_admin: boolean
 }
 
 export function useAuth() {
@@ -13,10 +14,28 @@ export function useAuth() {
     return stored ? JSON.parse(stored) : null
   })
 
+  const [viewAsCustomerId, setViewAsCustomerIdState] = useState<string>(() => {
+    return localStorage.getItem('viewAsCustomerId') || ''
+  })
+
+  const setViewAsCustomerId = (id: string) => {
+    if (id) {
+      localStorage.setItem('viewAsCustomerId', id)
+    } else {
+      localStorage.removeItem('viewAsCustomerId')
+    }
+    setViewAsCustomerIdState(id)
+  }
+
   const login = async (email: string, password: string): Promise<void> => {
     const { data } = await api.post('/auth/login', { email, password })
     localStorage.setItem('token', data.access_token)
-    const u: User = { customer_id: data.customer_id, name: data.name, email }
+    const u: User = {
+      customer_id: data.customer_id,
+      name: data.name,
+      email,
+      is_admin: data.is_admin ?? false,
+    }
     localStorage.setItem('user', JSON.stringify(u))
     setUser(u)
   }
@@ -24,8 +43,10 @@ export function useAuth() {
   const logout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
+    localStorage.removeItem('viewAsCustomerId')
     setUser(null)
+    setViewAsCustomerIdState('')
   }
 
-  return { user, login, logout }
+  return { user, login, logout, viewAsCustomerId, setViewAsCustomerId }
 }
