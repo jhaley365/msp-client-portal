@@ -115,9 +115,14 @@ def _get(sess: requests.Session, path: str, params: dict | None = None) -> dict 
 # ---------------------------------------------------------------------------
 
 
-def _load_customer_map(customers_table: Any) -> dict[str, tuple[str, str]]:
-    """Return {scoutdns_org_id: (customer_id, customer_name)} for all mapped customers."""
-    org_map: dict[str, tuple[str, str]] = {}
+def _load_customer_map(customers_table: Any) -> dict[str, list[tuple[str, str]]]:
+    """Return {scoutdns_org_id: [(customer_id, customer_name), ...]} for all mapped customers.
+
+    Multiple portal customers can share the same ScoutDNS org (e.g. a company
+    split across several customer records). Each will receive its own copy of
+    the synced data.
+    """
+    org_map: dict[str, list[tuple[str, str]]] = {}
     kwargs: dict[str, Any] = {}
     while True:
         resp = customers_table.scan(**kwargs)
@@ -126,12 +131,13 @@ def _load_customer_map(customers_table: Any) -> dict[str, tuple[str, str]]:
             cid: str = item.get("customer_id", "")
             name: str = item.get("name", "")
             if org_id and cid:
-                org_map[org_id] = (cid, name)
+                org_map.setdefault(org_id, []).append((cid, name))
         last_key = resp.get("LastEvaluatedKey")
         if not last_key:
             break
         kwargs["ExclusiveStartKey"] = last_key
-    logger.info("Loaded %d ScoutDNS customer mappings", len(org_map))
+    total = sum(len(v) for v in org_map.values())
+    logger.info("Loaded %d ScoutDNS customer mappings across %d orgs", total, len(org_map))
     return org_map
 
 
@@ -174,8 +180,8 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
             logger.debug("No mapping for org %s (%s) — skipping", org_id, org_name)
             continue
 
-        customer_id, customer_name = customer_map[org_id]
-        logger.info("Syncing org %s (%s) → customer %s", org_name, org_id, customer_id)
+        customers_for_org = customer_map[org_id]
+        logger.info("Syncing org %s (%s) → %d customer(s)", org_name, org_id, len(customers_for_org))
 
         # ── Request stats by decision ──────────────────────────────────────────
         stats_resp = _get(sess, "/getRequestStatsByDecisions",
@@ -214,73 +220,76 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
         online_clients = _to_decimal(counts_data.get("online", 0))
         offline_clients = _to_decimal(counts_data.get("offline", 0))
 
-        # ── Upsert summary record ─────────────────────────────────────────────
-        tbl_summary.put_item(Item={
-            "customer_id": customer_id,
-            "customer_name": customer_name,
-            "allowed_requests": allowed_requests,
-            "blocked_requests": blocked_requests,
-            "threat_count": threat_count,
-            "top_categories": top_categories,
-            "top_domains": top_domains,
-            "online_clients": online_clients,
-            "offline_clients": offline_clients,
-            "period": _PERIOD,
-            "last_synced_at": synced_at,
-        })
-        summaries_written += 1
-
         # ── Sites (locations) ─────────────────────────────────────────────────
         sites_resp = _get(sess, "/getLocations", params={"organizationId": org_id})
         sites: list[dict] = sites_resp.get("data", []) if isinstance(sites_resp, dict) else []
-        site_items: list[dict] = []
-        for site in sites:
-            sid = str(site.get("id", ""))
-            if not sid:
-                continue
-            site_items.append({
-                "site_id": sid,
-                "customer_id": customer_id,
-                "customer_name": customer_name,
-                "name": site.get("name", "") or "unknown",
-                "address": site.get("address", "") or "",
-                "last_synced_at": synced_at,
-            })
-        if site_items:
-            _batch_write(tbl_sites, site_items)
-            sites_written += len(site_items)
 
         # ── Roaming clients ───────────────────────────────────────────────────
         clients_resp = _get(sess, "/getClients",
                             params={"organizationId": org_id, "limit": 500})
         clients: list[dict] = clients_resp.get("data", []) if isinstance(clients_resp, dict) else []
-        client_items: list[dict] = []
-        for client in clients:
-            cid_val = str(client.get("id", ""))
-            if not cid_val:
-                continue
-            last_sync = client.get("lastSyncAt")
-            last_sync_iso = (
-                datetime.fromtimestamp(last_sync / 1000, tz=timezone.utc).isoformat()
-                if last_sync else ""
-            )
-            client_items.append({
-                "client_id": cid_val,
+
+        # ── Write a record for every mapped customer ──────────────────────────
+        for customer_id, customer_name in customers_for_org:
+            tbl_summary.put_item(Item={
                 "customer_id": customer_id,
                 "customer_name": customer_name,
-                "client_name": client.get("clientName", "") or "unknown",
-                "os_name": client.get("osName", "") or "",
-                "agent_status": (client.get("agentStatus", "") or "unknown").lower(),
-                "profile": client.get("profile", "") or "",
-                "version": client.get("version", "") or "",
-                "site": client.get("site", "") or "",
-                "policy": client.get("policy", "") or "",
-                "last_sync_at": last_sync_iso,
+                "allowed_requests": allowed_requests,
+                "blocked_requests": blocked_requests,
+                "threat_count": threat_count,
+                "top_categories": top_categories,
+                "top_domains": top_domains,
+                "online_clients": online_clients,
+                "offline_clients": offline_clients,
+                "period": _PERIOD,
                 "last_synced_at": synced_at,
             })
-        if client_items:
-            _batch_write(tbl_clients, client_items)
-            clients_written += len(client_items)
+            summaries_written += 1
+
+            site_items: list[dict] = []
+            for site in sites:
+                sid = str(site.get("id", ""))
+                if not sid:
+                    continue
+                site_items.append({
+                    "site_id": f"{sid}#{customer_id}",
+                    "customer_id": customer_id,
+                    "customer_name": customer_name,
+                    "name": site.get("name", "") or "unknown",
+                    "address": site.get("address", "") or "",
+                    "last_synced_at": synced_at,
+                })
+            if site_items:
+                _batch_write(tbl_sites, site_items)
+                sites_written += len(site_items)
+
+            client_items: list[dict] = []
+            for client in clients:
+                cid_val = str(client.get("id", ""))
+                if not cid_val:
+                    continue
+                last_sync = client.get("lastSyncAt")
+                last_sync_iso = (
+                    datetime.fromtimestamp(last_sync / 1000, tz=timezone.utc).isoformat()
+                    if last_sync else ""
+                )
+                client_items.append({
+                    "client_id": f"{cid_val}#{customer_id}",
+                    "customer_id": customer_id,
+                    "customer_name": customer_name,
+                    "client_name": client.get("clientName", "") or "unknown",
+                    "os_name": client.get("osName", "") or "",
+                    "agent_status": (client.get("agentStatus", "") or "unknown").lower(),
+                    "profile": client.get("profile", "") or "",
+                    "version": client.get("version", "") or "",
+                    "site": client.get("site", "") or "",
+                    "policy": client.get("policy", "") or "",
+                    "last_sync_at": last_sync_iso,
+                    "last_synced_at": synced_at,
+                })
+            if client_items:
+                _batch_write(tbl_clients, client_items)
+                clients_written += len(client_items)
 
     totals = {
         "summaries_written": summaries_written,
