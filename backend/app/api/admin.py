@@ -32,8 +32,8 @@ def list_customers(user: dict = Depends(_require_admin)) -> list[dict]:
     tbl = _customers_table()
     items: list[dict] = []
     kwargs: dict[str, Any] = {
-        "ProjectionExpression": "customer_id, #n, hidden",
-        "ExpressionAttributeNames": {"#n": "name"},
+        "ProjectionExpression": "customer_id, #n, #h",
+        "ExpressionAttributeNames": {"#n": "name", "#h": "hidden"},
     }
     while True:
         resp = tbl.scan(**kwargs)
