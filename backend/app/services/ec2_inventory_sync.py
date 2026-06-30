@@ -141,12 +141,15 @@ class CustomerCache:
             return self._cache[client_tag_value]
 
         # Try treating the tag value as the customer_id directly.
+        # If the record has a `resolves_to` field, follow it (e.g. an old tag
+        # alias like "SERRG" that should map to "CENTRICITY-CA").
         try:
             resp = self._table.get_item(Key={"customer_id": client_tag_value})
             item = resp.get("Item")
             if item:
-                self._cache[client_tag_value] = client_tag_value
-                return client_tag_value
+                canonical = item.get("resolves_to") or client_tag_value
+                self._cache[client_tag_value] = canonical
+                return canonical
         except ClientError:
             pass
 
