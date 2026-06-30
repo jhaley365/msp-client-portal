@@ -81,29 +81,35 @@ export default function SecurityPage() {
         <KpiCard label="Critical Incidents" value={summary?.critical_incidents ?? '--'} accentColor="border-red-500" />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="space-y-4">
         <div className="section-card">
-          <div className="p-4 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-gray-700">Agents</h2>
+          <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-700">Incidents</h2>
+            <span className="text-xs text-gray-400">{incidents.length} total</span>
           </div>
-          <DataTable<Agent>
-            columns={agentColumns}
-            data={agents}
-            loading={loading}
-            emptyMessage="No agents found."
-          />
+          <div className="overflow-y-auto" style={{ maxHeight: '32rem' }}>
+            <DataTable<Incident>
+              columns={incidentColumns}
+              data={incidents}
+              loading={loading}
+              emptyMessage="No incidents found."
+            />
+          </div>
         </div>
 
         <div className="section-card">
-          <div className="p-4 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-gray-700">Incidents</h2>
+          <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-700">Agents</h2>
+            <span className="text-xs text-gray-400">{agents.length} total</span>
           </div>
-          <DataTable<Incident>
-            columns={incidentColumns}
-            data={incidents}
-            loading={loading}
-            emptyMessage="No incidents found."
-          />
+          <div className="overflow-y-auto" style={{ maxHeight: '32rem' }}>
+            <DataTable<Agent>
+              columns={agentColumns}
+              data={agents}
+              loading={loading}
+              emptyMessage="No agents found."
+            />
+          </div>
         </div>
       </div>
     </div>
