@@ -1,8 +1,8 @@
-"""ScoutDNS stats endpoints — all scoped to the authenticated customer."""
+"""ScoutDNS endpoints — all scoped to the authenticated customer."""
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+import json
 from typing import Any
 
 import boto3
@@ -14,9 +14,11 @@ from app.core.dependencies import get_current_user
 
 router = APIRouter(prefix="/scoutdns", tags=["scoutdns"])
 
-_PAGE_SIZE = 50
+_PAGE_SIZE = 100
 
-TABLE_STATS = "ScoutDNSStats"
+TABLE_SUMMARY = "ScoutDNSSummary"
+TABLE_SITES = "ScoutDNSSites"
+TABLE_CLIENTS = "ScoutDNSClients"
 
 
 def _table(name: str) -> Any:
@@ -26,86 +28,112 @@ def _table(name: str) -> Any:
     return boto3.resource("dynamodb", **kwargs).Table(name)
 
 
-def _today_utc() -> date:
-    return datetime.now(tz=timezone.utc).date()
+def _int(val: Any) -> int:
+    try:
+        return int(val)
+    except (TypeError, ValueError):
+        return 0
 
 
 # ── Summary ──────────────────────────────────────────────────────────────────
 
 
 @router.get("/summary")
-def summary(
-    days: int = Query(default=30, ge=1, le=365),
-    user: dict = Depends(get_current_user),
-) -> dict:
-    """Return aggregated DNS query totals for the last *days* days.
-
-    Parameters
-    ----------
-    days:
-        Number of past days to aggregate (default 30, max 365).
-    """
+def summary(user: dict = Depends(get_current_user)) -> dict:
+    """Return pre-aggregated DNS summary for the authenticated customer."""
     customer_id: str = user["customer_id"]
-    tbl = _table(TABLE_STATS)
+    tbl = _table(TABLE_SUMMARY)
 
-    cutoff_date = (_today_utc() - timedelta(days=days)).isoformat()
+    resp = tbl.get_item(Key={"customer_id": customer_id})
+    item = resp.get("Item")
+    if not item:
+        return {
+            "allowed_requests": 0,
+            "blocked_requests": 0,
+            "threat_count": 0,
+            "online_clients": 0,
+            "offline_clients": 0,
+            "top_categories": [],
+            "top_domains": [],
+            "period": "Last 30 Days",
+            "last_synced_at": None,
+        }
 
-    resp = tbl.query(
-        IndexName="customer_id-date-index",
-        KeyConditionExpression=(
-            Key("customer_id").eq(customer_id) & Key("date").gte(cutoff_date)
-        ),
-        ScanIndexForward=False,
-    )
-
-    items = resp.get("Items", [])
-
-    total_queries = sum(int(item.get("total_queries", 0)) for item in items)
-    blocked_queries = sum(int(item.get("blocked_queries", 0)) for item in items)
-    allowed_queries = sum(int(item.get("allowed_queries", 0)) for item in items)
-
-    block_rate: float = (
-        round(blocked_queries / total_queries * 100, 2) if total_queries > 0 else 0.0
-    )
+    top_categories = item.get("top_categories", "[]")
+    top_domains = item.get("top_domains", "[]")
+    try:
+        top_categories = json.loads(top_categories) if isinstance(top_categories, str) else top_categories
+    except (json.JSONDecodeError, TypeError):
+        top_categories = []
+    try:
+        top_domains = json.loads(top_domains) if isinstance(top_domains, str) else top_domains
+    except (json.JSONDecodeError, TypeError):
+        top_domains = []
 
     return {
-        "days": days,
-        "total_queries": total_queries,
-        "blocked_queries": blocked_queries,
-        "allowed_queries": allowed_queries,
-        "block_rate_pct": block_rate,
+        "allowed_requests": _int(item.get("allowed_requests", 0)),
+        "blocked_requests": _int(item.get("blocked_requests", 0)),
+        "threat_count": _int(item.get("threat_count", 0)),
+        "online_clients": _int(item.get("online_clients", 0)),
+        "offline_clients": _int(item.get("offline_clients", 0)),
+        "top_categories": top_categories,
+        "top_domains": top_domains,
+        "period": item.get("period", "Last 30 Days"),
+        "last_synced_at": item.get("last_synced_at"),
     }
 
 
-# ── Stats list ────────────────────────────────────────────────────────────────
+# ── Sites ─────────────────────────────────────────────────────────────────────
 
 
-@router.get("/stats")
-def list_stats(
-    days: int = Query(default=30, ge=1, le=365),
+@router.get("/sites")
+def list_sites(
+    last_key: str | None = Query(default=None),
     user: dict = Depends(get_current_user),
 ) -> dict:
-    """Return daily ScoutDNS stat records sorted by date descending.
-
-    Parameters
-    ----------
-    days:
-        Number of past days to return (default 30, max 365).
-    """
+    """Return network sites (locations) for the authenticated customer."""
     customer_id: str = user["customer_id"]
-    tbl = _table(TABLE_STATS)
+    tbl = _table(TABLE_SITES)
 
-    cutoff_date = (_today_utc() - timedelta(days=days)).isoformat()
+    kwargs: dict[str, Any] = {
+        "IndexName": "customer_id-index",
+        "KeyConditionExpression": Key("customer_id").eq(customer_id),
+        "Limit": _PAGE_SIZE,
+    }
+    if last_key:
+        kwargs["ExclusiveStartKey"] = {"customer_id": customer_id, "site_id": last_key}
 
-    resp = tbl.query(
-        IndexName="customer_id-date-index",
-        KeyConditionExpression=(
-            Key("customer_id").eq(customer_id) & Key("date").gte(cutoff_date)
-        ),
-        ScanIndexForward=False,
-    )
-
+    resp = tbl.query(**kwargs)
     return {
         "items": resp.get("Items", []),
+        "next_key": resp.get("LastEvaluatedKey", {}).get("site_id"),
+        "count": resp.get("Count", 0),
+    }
+
+
+# ── Clients ───────────────────────────────────────────────────────────────────
+
+
+@router.get("/clients")
+def list_clients(
+    last_key: str | None = Query(default=None),
+    user: dict = Depends(get_current_user),
+) -> dict:
+    """Return roaming clients for the authenticated customer."""
+    customer_id: str = user["customer_id"]
+    tbl = _table(TABLE_CLIENTS)
+
+    kwargs: dict[str, Any] = {
+        "IndexName": "customer_id-index",
+        "KeyConditionExpression": Key("customer_id").eq(customer_id),
+        "Limit": _PAGE_SIZE,
+    }
+    if last_key:
+        kwargs["ExclusiveStartKey"] = {"customer_id": customer_id, "client_id": last_key}
+
+    resp = tbl.query(**kwargs)
+    return {
+        "items": resp.get("Items", []),
+        "next_key": resp.get("LastEvaluatedKey", {}).get("client_id"),
         "count": resp.get("Count", 0),
     }

@@ -1,30 +1,22 @@
 """
-AWS Lambda — ScoutDNS Stats Sync
-==================================
-Fetches daily DNS statistics from the ScoutDNS API for each organization,
-maps each organization to a portal customer via name lookup, and upserts
-the data into the ScoutDNSStats DynamoDB table.
+AWS Lambda — ScoutDNS Sync
+===========================
+Fetches DNS stats, sites, networks, and roaming clients from the ScoutDNS API
+for each mapped customer organization, then upserts the data into DynamoDB.
 
-Invoke schedule (recommended): EventBridge rule once daily (after midnight UTC).
+Invoke schedule (recommended): EventBridge rule every 6–24 hours.
 
 Required IAM permissions for the Lambda execution role
 -------------------------------------------------------
     dynamodb:Scan             (Customers)
-    dynamodb:PutItem          (ScoutDNSStats)
-    dynamodb:BatchWriteItem   (ScoutDNSStats)
+    dynamodb:PutItem          (ScoutDNSSummary, ScoutDNSSites, ScoutDNSClients)
+    dynamodb:BatchWriteItem   (ScoutDNSSites, ScoutDNSClients)
 
 Environment variables
 ---------------------
-    SCOUTDNS_API_KEY     ScoutDNS API key (used as Bearer token)
-    DYNAMODB_REGION      AWS region where DynamoDB tables live (default: us-east-1)
-    DYNAMODB_ENDPOINT_URL  Override endpoint for local testing (e.g. DynamoDB Local)
-    SCOUTDNS_DAYS_BACK   Number of past days to sync per org (default: 1)
-
-Notes
------
-The ScoutDNS API base URL and exact endpoint paths are placeholders.
-Search for ``# TODO`` comments to find sections that need updating once
-the real API documentation is available.
+    SCOUTDNS_API_KEY       ScoutDNS API key (X-API-ACCESS-KEY header)
+    DYNAMODB_REGION        AWS region where DynamoDB tables live (default: us-east-1)
+    DYNAMODB_ENDPOINT_URL  Override endpoint for local testing
 """
 
 from __future__ import annotations
@@ -32,12 +24,12 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any
 
 import boto3
 import requests
-from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -47,17 +39,18 @@ logger.setLevel(logging.INFO)
 # ---------------------------------------------------------------------------
 
 SCOUTDNS_API_KEY: str = os.environ.get("SCOUTDNS_API_KEY", "")
-# TODO: Replace with the real ScoutDNS API base URL once confirmed.
-SCOUTDNS_BASE_URL = "https://api.scoutdns.com/v1"
+SCOUTDNS_BASE_URL = "https://api.scoutdns.com/app"
 
 DYNAMODB_REGION: str = os.environ.get("DYNAMODB_REGION", "us-east-1")
 _ENDPOINT: str | None = os.environ.get("DYNAMODB_ENDPOINT_URL") or None
-_DAYS_BACK: int = int(os.environ.get("SCOUTDNS_DAYS_BACK", "1"))
 
-TABLE_STATS = "ScoutDNSStats"
+TABLE_SUMMARY = "ScoutDNSSummary"
+TABLE_SITES = "ScoutDNSSites"
+TABLE_CLIENTS = "ScoutDNSClients"
 TABLE_CUSTOMERS = "Customers"
 
 _BATCH_SIZE = 25
+_PERIOD = "Last 30 Days"
 
 
 # ---------------------------------------------------------------------------
@@ -76,8 +69,12 @@ def _utcnow_iso() -> str:
     return datetime.now(tz=timezone.utc).isoformat()
 
 
-def _today_utc() -> date:
-    return datetime.now(tz=timezone.utc).date()
+def _to_decimal(value: Any) -> Decimal:
+    """Convert a numeric value to Decimal for DynamoDB storage."""
+    try:
+        return Decimal(str(value))
+    except Exception:
+        return Decimal("0")
 
 
 def _batch_write(table: Any, items: list[dict]) -> None:
@@ -93,140 +90,49 @@ def _batch_write(table: Any, items: list[dict]) -> None:
             table.meta.client.batch_write_item(RequestItems={table.name: unprocessed})
 
 
-def _scoutdns_session() -> requests.Session:
-    """Return a requests Session pre-configured with ScoutDNS Bearer auth."""
-    session = requests.Session()
-    session.headers.update(
-        {
-            "Authorization": f"Bearer {SCOUTDNS_API_KEY}",
-            "Accept": "application/json",
-        }
-    )
-    return session
+def _session() -> requests.Session:
+    sess = requests.Session()
+    sess.headers.update({
+        "X-API-ACCESS-KEY": SCOUTDNS_API_KEY,
+        "Accept": "application/json",
+    })
+    return sess
 
 
-# ---------------------------------------------------------------------------
-# Customer name cache
-# ---------------------------------------------------------------------------
-
-
-class CustomerNameCache:
-    """Lazy cache: resolves an organization name → (customer_id, customer_name).
-
-    Scans the Customers DynamoDB table once on first miss and builds an
-    in-memory map keyed by the ``name`` field for subsequent lookups.
-    """
-
-    def __init__(self, customers_table: Any) -> None:
-        self._table = customers_table
-        self._cache: dict[str, tuple[str, str]] | None = None
-
-    def _load(self) -> None:
-        """Scan the Customers table and populate the cache."""
-        self._cache = {}
-        kwargs: dict[str, Any] = {}
-        while True:
-            resp = self._table.scan(**kwargs)
-            for item in resp.get("Items", []):
-                name: str = item.get("name", "")
-                cid: str = item.get("customer_id", "")
-                if name and cid:
-                    self._cache[name.lower()] = (cid, name)
-            last_key = resp.get("LastEvaluatedKey")
-            if not last_key:
-                break
-            kwargs["ExclusiveStartKey"] = last_key
-        logger.info("CustomerNameCache loaded %d entries", len(self._cache))
-
-    def resolve(self, org_name: str) -> tuple[str, str] | None:
-        """Return ``(customer_id, customer_name)`` for the given org name.
-
-        Returns ``None`` when no matching customer is found.
-        """
-        if self._cache is None:
-            self._load()
-        result = self._cache.get(org_name.lower())  # type: ignore[union-attr]
-        if result is None:
-            logger.warning("No customer found for ScoutDNS org name: %s", org_name)
-        return result
-
-
-# ---------------------------------------------------------------------------
-# ScoutDNS API calls
-# ---------------------------------------------------------------------------
-
-
-def _fetch_organizations(session: requests.Session) -> list[dict]:
-    """Return all ScoutDNS organizations.
-
-    # TODO: Confirm the exact endpoint path and response shape.
-    # Expected response: [{"id": "...", "name": "..."}, ...]
-    """
-    # TODO: Replace with real endpoint once API docs are confirmed.
-    url = f"{SCOUTDNS_BASE_URL}/organizations"
+def _get(sess: requests.Session, path: str, params: dict | None = None) -> dict | list:
+    url = f"{SCOUTDNS_BASE_URL}{path}"
     try:
-        resp = session.get(url, timeout=30)
+        resp = sess.get(url, params=params, timeout=30)
         resp.raise_for_status()
-        return resp.json()  # TODO: confirm response key; may be {"orgs": [...]}
+        return resp.json()
     except requests.RequestException as exc:
-        logger.error("ScoutDNS API error fetching organizations: %s", exc)
-        return []
-
-
-def _fetch_summary(
-    session: requests.Session,
-    org_id: str,
-    report_date: str,
-) -> dict:
-    """Return total_queries, blocked_queries, allowed_queries for an org/date.
-
-    # TODO: Confirm the exact endpoint path, query parameters, and response shape.
-    """
-    # TODO: Replace with real endpoint once API docs are confirmed.
-    url = f"{SCOUTDNS_BASE_URL}/reports/summary"
-    params = {"org_id": org_id, "date": report_date}
-    try:
-        resp = session.get(url, params=params, timeout=30)
-        resp.raise_for_status()
-        return resp.json()  # TODO: confirm keys match total_queries / blocked_queries / allowed_queries
-    except requests.RequestException as exc:
-        logger.error(
-            "ScoutDNS API error fetching summary for org %s date %s: %s",
-            org_id,
-            report_date,
-            exc,
-        )
+        logger.error("ScoutDNS API error %s: %s", path, exc)
         return {}
 
 
-def _fetch_top_blocked(
-    session: requests.Session,
-    org_id: str,
-    report_date: str,
-    limit: int = 10,
-) -> list[str]:
-    """Return the top blocked domain names for an org/date.
+# ---------------------------------------------------------------------------
+# Customer org cache (keyed by scoutdns_org_id)
+# ---------------------------------------------------------------------------
 
-    # TODO: Confirm the exact endpoint path, query parameters, and response shape.
-    """
-    # TODO: Replace with real endpoint once API docs are confirmed.
-    url = f"{SCOUTDNS_BASE_URL}/reports/top_blocked"
-    params = {"org_id": org_id, "date": report_date, "limit": limit}
-    try:
-        resp = session.get(url, params=params, timeout=30)
-        resp.raise_for_status()
-        data = resp.json()
-        # TODO: confirm response key; may be {"domains": ["example.com", ...]}
-        domains = data if isinstance(data, list) else data.get("domains", [])
-        return [str(d) for d in domains]
-    except requests.RequestException as exc:
-        logger.error(
-            "ScoutDNS API error fetching top_blocked for org %s date %s: %s",
-            org_id,
-            report_date,
-            exc,
-        )
-        return []
+
+def _load_customer_map(customers_table: Any) -> dict[str, tuple[str, str]]:
+    """Return {scoutdns_org_id: (customer_id, customer_name)} for all mapped customers."""
+    org_map: dict[str, tuple[str, str]] = {}
+    kwargs: dict[str, Any] = {}
+    while True:
+        resp = customers_table.scan(**kwargs)
+        for item in resp.get("Items", []):
+            org_id: str = item.get("scoutdns_org_id", "")
+            cid: str = item.get("customer_id", "")
+            name: str = item.get("name", "")
+            if org_id and cid:
+                org_map[org_id] = (cid, name)
+        last_key = resp.get("LastEvaluatedKey")
+        if not last_key:
+            break
+        kwargs["ExclusiveStartKey"] = last_key
+    logger.info("Loaded %d ScoutDNS customer mappings", len(org_map))
+    return org_map
 
 
 # ---------------------------------------------------------------------------
@@ -235,70 +141,153 @@ def _fetch_top_blocked(
 
 
 def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
-    """Entry point invoked by EventBridge or a manual test event."""
     synced_at = _utcnow_iso()
-    logger.info("Starting ScoutDNS stats sync at %s", synced_at)
+    logger.info("Starting ScoutDNS sync at %s", synced_at)
 
     dynamo = _dynamo_resource()
     tbl_customers = dynamo.Table(TABLE_CUSTOMERS)
-    tbl_stats = dynamo.Table(TABLE_STATS)
+    tbl_summary = dynamo.Table(TABLE_SUMMARY)
+    tbl_sites = dynamo.Table(TABLE_SITES)
+    tbl_clients = dynamo.Table(TABLE_CLIENTS)
 
-    cache = CustomerNameCache(tbl_customers)
-    session = _scoutdns_session()
+    customer_map = _load_customer_map(tbl_customers)
+    if not customer_map:
+        logger.warning("No customers have scoutdns_org_id set — nothing to sync.")
+        return {"statusCode": 200, "body": json.dumps({"synced_at": synced_at, "totals": {}})}
 
-    orgs = _fetch_organizations(session)
-    logger.info("Fetched %d ScoutDNS organization(s)", len(orgs))
+    sess = _session()
 
-    today = _today_utc()
-    dates_to_sync = [
-        (today - timedelta(days=d)).isoformat() for d in range(_DAYS_BACK)
-    ]
+    # Fetch all organizations to build org_id → org_name map
+    orgs_resp = _get(sess, "/getOrganizations")
+    orgs: list[dict] = orgs_resp.get("data", []) if isinstance(orgs_resp, dict) else []
+    logger.info("Fetched %d ScoutDNS organizations", len(orgs))
 
-    stat_items: list[dict] = []
+    summaries_written = 0
+    sites_written = 0
+    clients_written = 0
 
     for org in orgs:
-        # TODO: confirm the org dict field names (may be "id" / "name" or "org_id" / "org_name").
         org_id: str = str(org.get("id", ""))
         org_name: str = org.get("name", "")
 
-        resolved = cache.resolve(org_name) if org_name else None
-        customer_id = resolved[0] if resolved else "unassigned"
-        customer_name = resolved[1] if resolved else org_name
+        if org_id not in customer_map:
+            logger.debug("No mapping for org %s (%s) — skipping", org_id, org_name)
+            continue
 
-        for report_date in dates_to_sync:
-            summary = _fetch_summary(session, org_id, report_date)
-            top_blocked = _fetch_top_blocked(session, org_id, report_date)
+        customer_id, customer_name = customer_map[org_id]
+        logger.info("Syncing org %s (%s) → customer %s", org_name, org_id, customer_id)
 
-            total_queries: int = int(summary.get("total_queries", 0))
-            blocked_queries: int = int(summary.get("blocked_queries", 0))
-            allowed_queries: int = int(summary.get("allowed_queries", 0))
+        # ── Request stats by decision ──────────────────────────────────────────
+        stats_resp = _get(sess, "/getRequestStatsByDecisions",
+                          params={"period": _PERIOD, "organizationId": org_id})
+        stats_data: dict = stats_resp.get("data", {}) if isinstance(stats_resp, dict) else {}
+        allowed_requests = _to_decimal(stats_data.get("ALLOWED", 0))
+        blocked_requests = _to_decimal(stats_data.get("BLOCKED", 0) + stats_data.get("DROP", 0))
 
-            stat_id = f"{customer_id}#{report_date}"
+        # ── Threat stats ──────────────────────────────────────────────────────
+        threats_resp = _get(sess, "/getThreatStats",
+                            params={"period": _PERIOD, "organizationId": org_id})
+        threats_data: list = threats_resp.get("data", []) if isinstance(threats_resp, dict) else []
+        threat_count = _to_decimal(sum(t.get("count", 0) for t in threats_data))
 
-            item: dict[str, Any] = {
-                "stat_id": stat_id,
+        # ── Top blocked categories ─────────────────────────────────────────────
+        cats_resp = _get(sess, "/getTopCategories",
+                         params={"period": _PERIOD, "decision": "FORBIDDEN",
+                                 "organizationId": org_id, "limit": 10})
+        cats_data: dict = cats_resp.get("data", {}) if isinstance(cats_resp, dict) else {}
+        top_categories = json.dumps([
+            {"name": k, "count": v} for k, v in sorted(cats_data.items(), key=lambda x: -x[1])
+        ])
+
+        # ── Top blocked domains ───────────────────────────────────────────────
+        domains_resp = _get(sess, "/getTopDomains",
+                            params={"period": _PERIOD, "decision": "FORBIDDEN",
+                                    "organizationId": org_id, "limit": 10})
+        domains_data: dict = domains_resp.get("data", {}) if isinstance(domains_resp, dict) else {}
+        top_domains = json.dumps([
+            {"domain": k, "count": v} for k, v in sorted(domains_data.items(), key=lambda x: -x[1])
+        ])
+
+        # ── Roaming client counts ─────────────────────────────────────────────
+        counts_resp = _get(sess, "/getClientCountStats", params={"organizationId": org_id})
+        counts_data: dict = counts_resp.get("data", {}) if isinstance(counts_resp, dict) else {}
+        online_clients = _to_decimal(counts_data.get("online", 0))
+        offline_clients = _to_decimal(counts_data.get("offline", 0))
+
+        # ── Upsert summary record ─────────────────────────────────────────────
+        tbl_summary.put_item(Item={
+            "customer_id": customer_id,
+            "customer_name": customer_name,
+            "allowed_requests": allowed_requests,
+            "blocked_requests": blocked_requests,
+            "threat_count": threat_count,
+            "top_categories": top_categories,
+            "top_domains": top_domains,
+            "online_clients": online_clients,
+            "offline_clients": offline_clients,
+            "period": _PERIOD,
+            "last_synced_at": synced_at,
+        })
+        summaries_written += 1
+
+        # ── Sites (locations) ─────────────────────────────────────────────────
+        sites_resp = _get(sess, "/getLocations", params={"organizationId": org_id})
+        sites: list[dict] = sites_resp.get("data", []) if isinstance(sites_resp, dict) else []
+        site_items: list[dict] = []
+        for site in sites:
+            sid = str(site.get("id", ""))
+            if not sid:
+                continue
+            site_items.append({
+                "site_id": sid,
                 "customer_id": customer_id,
                 "customer_name": customer_name,
-                "date": report_date,
-                "total_queries": total_queries,
-                "blocked_queries": blocked_queries,
-                "allowed_queries": allowed_queries,
-                "top_blocked_domains": top_blocked,
+                "name": site.get("name", "") or "unknown",
+                "address": site.get("address", "") or "",
                 "last_synced_at": synced_at,
-            }
-            stat_items.append(item)
-            logger.debug(
-                "Built stat item %s: total=%d blocked=%d",
-                stat_id,
-                total_queries,
-                blocked_queries,
+            })
+        if site_items:
+            _batch_write(tbl_sites, site_items)
+            sites_written += len(site_items)
+
+        # ── Roaming clients ───────────────────────────────────────────────────
+        clients_resp = _get(sess, "/getClients",
+                            params={"organizationId": org_id, "limit": 500})
+        clients: list[dict] = clients_resp.get("data", []) if isinstance(clients_resp, dict) else []
+        client_items: list[dict] = []
+        for client in clients:
+            cid_val = str(client.get("id", ""))
+            if not cid_val:
+                continue
+            last_sync = client.get("lastSyncAt")
+            last_sync_iso = (
+                datetime.fromtimestamp(last_sync / 1000, tz=timezone.utc).isoformat()
+                if last_sync else ""
             )
+            client_items.append({
+                "client_id": cid_val,
+                "customer_id": customer_id,
+                "customer_name": customer_name,
+                "client_name": client.get("clientName", "") or "unknown",
+                "os_name": client.get("osName", "") or "",
+                "agent_status": (client.get("agentStatus", "") or "unknown").lower(),
+                "profile": client.get("profile", "") or "",
+                "version": client.get("version", "") or "",
+                "site": client.get("site", "") or "",
+                "policy": client.get("policy", "") or "",
+                "last_sync_at": last_sync_iso,
+                "last_synced_at": synced_at,
+            })
+        if client_items:
+            _batch_write(tbl_clients, client_items)
+            clients_written += len(client_items)
 
-    if stat_items:
-        _batch_write(tbl_stats, stat_items)
-
-    totals = {"stats_upserted": len(stat_items)}
-    logger.info("ScoutDNS sync complete. Upserted: %s", totals)
+    totals = {
+        "summaries_written": summaries_written,
+        "sites_written": sites_written,
+        "clients_written": clients_written,
+    }
+    logger.info("ScoutDNS sync complete. %s", totals)
 
     return {
         "statusCode": 200,
