@@ -54,7 +54,7 @@ def summary(user: dict = Depends(get_current_user)) -> dict:
 
     # Count total mailboxes.
     mailbox_resp = tbl_mailboxes.query(
-        IndexName="customer_id-last_synced_at-index",
+        IndexName="customer_id-index",
         KeyConditionExpression=Key("customer_id").eq(customer_id),
         Select="COUNT",
     )
@@ -101,21 +101,19 @@ def list_mailboxes(
     tbl = _table(TABLE_MAILBOXES)
 
     kwargs: dict[str, Any] = {
-        "IndexName": "customer_id-last_synced_at-index",
+        "IndexName": "customer_id-index",
         "KeyConditionExpression": Key("customer_id").eq(customer_id),
         "Limit": _PAGE_SIZE,
-        "ScanIndexForward": False,
     }
     if last_key:
         kwargs["ExclusiveStartKey"] = {
             "customer_id": customer_id,
-            "last_synced_at": last_key,
             "mailbox_id": last_key,
         }
 
     resp = tbl.query(**kwargs)
     return {
         "items": resp.get("Items", []),
-        "next_key": resp.get("LastEvaluatedKey", {}).get("last_synced_at"),
+        "next_key": resp.get("LastEvaluatedKey", {}).get("mailbox_id"),
         "count": resp.get("Count", 0),
     }
