@@ -4,103 +4,125 @@ import KpiCard from '../components/KpiCard'
 import DataTable, { Column } from '../components/DataTable'
 import Badge from '../components/Badge'
 
+interface Summary {
+  total_licenses: number
+  consumed_licenses: number
+  available_licenses: number
+  total_mailboxes: number
+}
+
 interface License {
-  sku_part_number: string
-  total: number
-  used: number
+  license_id: string
+  sku_name: string
+  total_units: number
+  consumed_units: number
+  available_units: number
 }
 
 interface Mailbox {
+  mailbox_id: string
   display_name: string
   email: string
-  mailbox_type: string
-  size_mb: number
-  item_count: number
+  account_enabled: boolean
+  licensed: boolean
 }
 
 export default function O365Page() {
+  const [summary, setSummary] = useState<Summary | null>(null)
   const [licenses, setLicenses] = useState<License[]>([])
   const [mailboxes, setMailboxes] = useState<Mailbox[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     Promise.allSettled([
+      api.get('/o365/summary'),
       api.get('/o365/licenses'),
       api.get('/o365/mailboxes'),
-    ]).then(([lic, mb]) => {
+    ]).then(([sum, lic, mb]) => {
+      if (sum.status === 'fulfilled') setSummary(sum.value.data)
       if (lic.status === 'fulfilled') setLicenses(lic.value.data?.items ?? lic.value.data ?? [])
       if (mb.status === 'fulfilled') setMailboxes(mb.value.data?.items ?? mb.value.data ?? [])
     }).finally(() => setLoading(false))
   }, [])
 
-  const totalLicenses = licenses.reduce((s, l) => s + (l.total ?? 0), 0)
-  const usedLicenses = licenses.reduce((s, l) => s + (l.used ?? 0), 0)
-  const availableLicenses = totalLicenses - usedLicenses
-
   const licenseColumns: Column<License>[] = [
-    { key: 'sku_part_number', header: 'SKU Name' },
-    { key: 'total', header: 'Total' },
-    { key: 'used', header: 'Used' },
-    { key: 'available', header: 'Available', render: (row) => String(row.total - row.used) },
+    { key: 'sku_name', header: 'License SKU' },
+    { key: 'total_units', header: 'Total' },
+    { key: 'consumed_units', header: 'Used' },
+    { key: 'available_units', header: 'Available' },
     {
       key: 'utilization',
-      header: 'Utilization %',
-      render: (row) => row.total > 0 ? `${Math.round((row.used / row.total) * 100)}%` : '—',
+      header: 'Utilization',
+      render: (row) => {
+        const pct = row.total_units > 0
+          ? Math.round((row.consumed_units / row.total_units) * 100)
+          : 0
+        const color = pct >= 90 ? 'bg-red-100 text-red-700'
+          : pct >= 75 ? 'bg-orange-100 text-orange-700'
+          : 'bg-green-100 text-green-700'
+        return (
+          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${color}`}>
+            {pct}%
+          </span>
+        )
+      },
     },
   ]
 
   const mailboxColumns: Column<Mailbox>[] = [
-    { key: 'display_name', header: 'Display Name' },
-    { key: 'email', header: 'Email' },
-    { key: 'mailbox_type', header: 'Type', render: (row) => <Badge state={row.mailbox_type} /> },
-    { key: 'size_mb', header: 'Size MB' },
-    { key: 'item_count', header: 'Items' },
+    { key: 'display_name', header: 'Name' },
+    { key: 'email', header: 'Email', className: 'font-mono text-xs' },
+    {
+      key: 'account_enabled',
+      header: 'Status',
+      render: (row) => <Badge state={row.account_enabled ? 'active' : 'disabled'} />,
+    },
+    {
+      key: 'licensed',
+      header: 'Licensed',
+      render: (row) => <Badge state={row.licensed ? 'enabled' : 'offline'} />,
+    },
   ]
 
   return (
     <div className="space-y-5">
       <h1 className="text-xl font-bold text-gray-800">Office 365</h1>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <KpiCard
-          label="Total Licenses"
-          value={loading ? '…' : (licenses.length ? totalLicenses : '--')}
-          accentColor="border-blue-500"
-        />
-        <KpiCard
-          label="Used Licenses"
-          value={loading ? '…' : (licenses.length ? usedLicenses : '--')}
-          accentColor="border-orange-500"
-        />
-        <KpiCard
-          label="Available"
-          value={loading ? '…' : (licenses.length ? availableLicenses : '--')}
-          accentColor="border-green-500"
-        />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <KpiCard label="Total Licenses" value={summary?.total_licenses ?? '--'} accentColor="border-blue-500" />
+        <KpiCard label="Licenses Used" value={summary?.consumed_licenses ?? '--'} accentColor="border-orange-500" />
+        <KpiCard label="Licenses Available" value={summary?.available_licenses ?? '--'} accentColor="border-green-500" />
+        <KpiCard label="Total Users" value={summary?.total_mailboxes ?? '--'} accentColor="border-gray-400" />
       </div>
 
       <div className="section-card">
-        <div className="p-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700">Licenses</h2>
+        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-700">License SKUs</h2>
+          <span className="text-xs text-gray-400">{licenses.length} SKUs</span>
         </div>
         <DataTable<License>
           columns={licenseColumns}
           data={licenses}
           loading={loading}
           emptyMessage="No license data available."
+          keyField="license_id"
         />
       </div>
 
       <div className="section-card">
-        <div className="p-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700">Mailboxes</h2>
+        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-700">Users</h2>
+          <span className="text-xs text-gray-400">{mailboxes.length} total</span>
         </div>
-        <DataTable<Mailbox>
-          columns={mailboxColumns}
-          data={mailboxes}
-          loading={loading}
-          emptyMessage="No mailbox data available."
-        />
+        <div className="overflow-y-auto" style={{ maxHeight: '32rem' }}>
+          <DataTable<Mailbox>
+            columns={mailboxColumns}
+            data={mailboxes}
+            loading={loading}
+            emptyMessage="No users found."
+            keyField="mailbox_id"
+          />
+        </div>
       </div>
     </div>
   )

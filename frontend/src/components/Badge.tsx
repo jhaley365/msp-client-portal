@@ -23,6 +23,7 @@ const STATE_COLORS: Record<string, string> = {
   terminated: 'bg-red-100 text-red-700',
   error: 'bg-red-100 text-red-700',
   critical: 'bg-red-100 text-red-700',
+  disabled: 'bg-red-100 text-red-700',
   // blue — open / active work
   new: 'bg-blue-100 text-blue-700',
   open: 'bg-blue-100 text-blue-700',
