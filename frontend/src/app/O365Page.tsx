@@ -41,7 +41,10 @@ export default function O365Page() {
     ]).then(([sum, lic, mb]) => {
       if (sum.status === 'fulfilled') setSummary(sum.value.data)
       if (lic.status === 'fulfilled') setLicenses(lic.value.data?.items ?? lic.value.data ?? [])
-      if (mb.status === 'fulfilled') setMailboxes(mb.value.data?.items ?? mb.value.data ?? [])
+      if (mb.status === 'fulfilled') {
+        const items: Mailbox[] = mb.value.data?.items ?? mb.value.data ?? []
+        setMailboxes(items.sort((a, b) => a.display_name.localeCompare(b.display_name)))
+      }
     }).finally(() => setLoading(false))
   }, [])
 

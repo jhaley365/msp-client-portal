@@ -18,6 +18,14 @@ _PAGE_SIZE = 50
 TABLE_LICENSES = "O365Licenses"
 TABLE_MAILBOXES = "O365Mailboxes"
 
+# SKUs that are infrastructure/noise and not useful to display
+_HIDDEN_SKUS = {
+    "FLOW_FREE",
+    "WINDOWS_STORE",
+    "MICROSOFT_FLOW_FREE",
+    "POWER_BI_STANDARD",
+}
+
 
 def _table(name: str) -> Any:
     kwargs: dict[str, Any] = {"region_name": DYNAMODB_REGION}
@@ -42,15 +50,14 @@ def summary(user: dict = Depends(get_current_user)) -> dict:
         IndexName="customer_id-index",
         KeyConditionExpression=Key("customer_id").eq(customer_id),
     )
-    license_items = license_resp.get("Items", [])
+    license_items = [
+        i for i in license_resp.get("Items", [])
+        if i.get("sku_name", "") not in _HIDDEN_SKUS
+    ]
 
     total_licenses = sum(int(item.get("total_units", 0)) for item in license_items)
-    consumed_licenses = sum(
-        int(item.get("consumed_units", 0)) for item in license_items
-    )
-    available_licenses = sum(
-        int(item.get("available_units", 0)) for item in license_items
-    )
+    consumed_licenses = sum(int(item.get("consumed_units", 0)) for item in license_items)
+    available_licenses = sum(int(item.get("available_units", 0)) for item in license_items)
 
     # Count total mailboxes.
     mailbox_resp = tbl_mailboxes.query(
@@ -82,9 +89,10 @@ def list_licenses(user: dict = Depends(get_current_user)) -> dict:
         KeyConditionExpression=Key("customer_id").eq(customer_id),
     )
 
+    items = [i for i in resp.get("Items", []) if i.get("sku_name", "") not in _HIDDEN_SKUS]
     return {
-        "items": resp.get("Items", []),
-        "count": resp.get("Count", 0),
+        "items": items,
+        "count": len(items),
     }
 
 
