@@ -6,7 +6,7 @@ from typing import Any
 
 import boto3
 from boto3.dynamodb.conditions import Key
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 
 from app.core.config import DYNAMODB_ENDPOINT_URL, DYNAMODB_REGION
 from app.core.dependencies import get_current_user
@@ -100,63 +100,49 @@ def summary(user: dict = Depends(get_current_user)) -> dict:
 
 
 @router.get("/agents")
-def list_agents(
-    last_key: str | None = Query(default=None),
-    user: dict = Depends(get_current_user),
-) -> dict:
-    """Return a paginated list of Huntress agents for the authenticated customer."""
+def list_agents(user: dict = Depends(get_current_user)) -> dict:
+    """Return all Huntress agents for the authenticated customer."""
     customer_id: str = user["customer_id"]
     tbl = _table(TABLE_AGENTS)
 
+    items: list[dict] = []
     kwargs: dict[str, Any] = {
         "IndexName": "customer_id-last_synced_at-index",
         "KeyConditionExpression": Key("customer_id").eq(customer_id),
-        "Limit": _PAGE_SIZE,
         "ScanIndexForward": False,
     }
-    if last_key:
-        kwargs["ExclusiveStartKey"] = {
-            "customer_id": customer_id,
-            "last_synced_at": last_key,
-            "agent_id": last_key,
-        }
+    while True:
+        resp = tbl.query(**kwargs)
+        items.extend(resp.get("Items", []))
+        last_key = resp.get("LastEvaluatedKey")
+        if not last_key:
+            break
+        kwargs["ExclusiveStartKey"] = last_key
 
-    resp = tbl.query(**kwargs)
-    return {
-        "items": resp.get("Items", []),
-        "next_key": resp.get("LastEvaluatedKey", {}).get("last_synced_at"),
-        "count": resp.get("Count", 0),
-    }
+    return {"items": items, "count": len(items)}
 
 
 # ── Incidents ─────────────────────────────────────────────────────────────────
 
 
 @router.get("/incidents")
-def list_incidents(
-    last_key: str | None = Query(default=None),
-    user: dict = Depends(get_current_user),
-) -> dict:
-    """Return a paginated list of Huntress incidents for the authenticated customer."""
+def list_incidents(user: dict = Depends(get_current_user)) -> dict:
+    """Return all Huntress incidents for the authenticated customer."""
     customer_id: str = user["customer_id"]
     tbl = _table(TABLE_INCIDENTS)
 
+    items: list[dict] = []
     kwargs: dict[str, Any] = {
         "IndexName": "customer_id-created_at-index",
         "KeyConditionExpression": Key("customer_id").eq(customer_id),
-        "Limit": _PAGE_SIZE,
         "ScanIndexForward": False,
     }
-    if last_key:
-        kwargs["ExclusiveStartKey"] = {
-            "customer_id": customer_id,
-            "created_at": last_key,
-            "incident_id": last_key,
-        }
+    while True:
+        resp = tbl.query(**kwargs)
+        items.extend(resp.get("Items", []))
+        last_key = resp.get("LastEvaluatedKey")
+        if not last_key:
+            break
+        kwargs["ExclusiveStartKey"] = last_key
 
-    resp = tbl.query(**kwargs)
-    return {
-        "items": resp.get("Items", []),
-        "next_key": resp.get("LastEvaluatedKey", {}).get("created_at"),
-        "count": resp.get("Count", 0),
-    }
+    return {"items": items, "count": len(items)}
