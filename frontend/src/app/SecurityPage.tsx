@@ -42,7 +42,10 @@ export default function SecurityPage() {
       api.get('/huntress/incidents'),
     ]).then(([sum, agts, incs]) => {
       if (sum.status === 'fulfilled') setSummary(sum.value.data)
-      if (agts.status === 'fulfilled') setAgents(agts.value.data?.items ?? agts.value.data ?? [])
+      if (agts.status === 'fulfilled') {
+        const items = agts.value.data?.items ?? agts.value.data ?? []
+        setAgents([...items].sort((a: Agent, b: Agent) => a.hostname.localeCompare(b.hostname)))
+      }
       if (incs.status === 'fulfilled') setIncidents(incs.value.data?.items ?? incs.value.data ?? [])
     }).finally(() => setLoading(false))
   }, [])
