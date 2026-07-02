@@ -7,8 +7,8 @@ const NAV = [
   { to: '/',         label: 'Dashboard',  end: true },
   { to: '/aws',      label: 'AWS' },
   { to: '/tickets',  label: 'Tickets' },
-  { to: '/security', label: 'Security' },
-  { to: '/dns',      label: 'DNS' },
+  { to: '/security', label: 'Huntress' },
+  { to: '/dns',      label: 'ScoutDNS' },
   { to: '/o365',     label: 'Office 365' },
 ]
 

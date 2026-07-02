@@ -22,7 +22,7 @@ interface Summary {
 }
 
 export default function TicketsPage() {
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('open')
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [loading, setLoading] = useState(false)
   const [lastKey, setLastKey] = useState<string | null>(null)
