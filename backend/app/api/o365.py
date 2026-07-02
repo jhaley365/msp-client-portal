@@ -53,6 +53,7 @@ def summary(user: dict = Depends(get_current_user)) -> dict:
     license_items = [
         i for i in license_resp.get("Items", [])
         if i.get("sku_name", "") not in _HIDDEN_SKUS
+        and int(i.get("total_units", 0)) < 10000
     ]
 
     total_licenses = sum(int(item.get("total_units", 0)) for item in license_items)
@@ -89,7 +90,11 @@ def list_licenses(user: dict = Depends(get_current_user)) -> dict:
         KeyConditionExpression=Key("customer_id").eq(customer_id),
     )
 
-    items = [i for i in resp.get("Items", []) if i.get("sku_name", "") not in _HIDDEN_SKUS]
+    items = [
+        i for i in resp.get("Items", [])
+        if i.get("sku_name", "") not in _HIDDEN_SKUS
+        and int(i.get("total_units", 0)) < 10000
+    ]
     return {
         "items": items,
         "count": len(items),
