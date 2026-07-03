@@ -23,7 +23,7 @@ function SkeletonRow({ cols }: { cols: number }) {
     <tr>
       {Array.from({ length: cols }).map((_, i) => (
         <td key={i} className="px-4 py-3">
-          <div className="h-4 w-3/[0.04] animate-pulse rounded bg-white/10" />
+          <div className="h-4 w-3/4 animate-pulse rounded bg-white/10" />
         </td>
       ))}
     </tr>
