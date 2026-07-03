@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-REPO_DIR="/home/ec2-user/msp-client-portal"
+REPO_DIR="/home/ubuntu/msp-client-portal"
 BRANCH="claude/practical-sagan-kkwh99"
 FRONTEND_DIR="$REPO_DIR/frontend"
 
