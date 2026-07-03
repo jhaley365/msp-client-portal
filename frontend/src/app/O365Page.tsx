@@ -82,7 +82,9 @@ export default function O365Page() {
 
   const mailboxColumns: Column<Mailbox>[] = [
     { key: 'display_name', header: 'Name' },
-    { key: 'email', header: 'Email', className: 'font-mono text-xs max-w-[220px] w-48 truncate', render: (row) => <span className="block truncate" title={row.email}>{row.email}</span> },
+    { key: 'email', header: 'Email', render: (row) => (
+      <div className="font-mono text-xs truncate" style={{ maxWidth: '200px' }} title={row.email}>{row.email}</div>
+    ) },
     {
       key: 'account_enabled',
       header: 'Status',
@@ -91,9 +93,8 @@ export default function O365Page() {
     {
       key: 'license_names',
       header: 'License',
-      className: 'max-w-[160px] w-40',
       render: (row) => row.license_names
-        ? <span className="text-xs text-gray-700 block truncate" title={row.license_names}>{row.license_names}</span>
+        ? <div className="text-xs text-gray-700 truncate" style={{ maxWidth: '160px' }} title={row.license_names}>{row.license_names}</div>
         : <span className="text-xs text-gray-400">Not Licensed</span>,
     },
     {
