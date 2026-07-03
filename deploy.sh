@@ -13,6 +13,7 @@ git pull origin "$BRANCH"
 
 echo "==> Building frontend..."
 cd "$FRONTEND_DIR"
+npm install
 npm run build
 
 echo "==> Restarting services..."
