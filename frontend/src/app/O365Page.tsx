@@ -91,14 +91,15 @@ export default function O365Page() {
     {
       key: 'license_names',
       header: 'License',
+      className: 'max-w-[160px] w-40',
       render: (row) => row.license_names
-        ? <span className="text-xs text-gray-700">{row.license_names}</span>
+        ? <span className="text-xs text-gray-700 block truncate" title={row.license_names}>{row.license_names}</span>
         : <span className="text-xs text-gray-400">Not Licensed</span>,
     },
     {
       key: 'mailbox_size_mb',
       header: 'Mailbox Size',
-      render: (row) => <span className="text-xs">{fmtSize(row.mailbox_size_mb)}</span>,
+      render: (row) => <span className="text-xs whitespace-nowrap">{fmtSize(row.mailbox_size_mb)}</span>,
     },
   ]
 
