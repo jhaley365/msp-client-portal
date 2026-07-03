@@ -11,7 +11,7 @@ import { useAuthContext } from './AuthContext'
 interface Summary { instances: number; volumes: number; snapshots: number }
 interface SyncroSummary { total: number; open: number; closed: number; in_progress: number }
 interface HuntressSummary { total_agents: number; online_agents: number; open_incidents: number; critical_incidents: number }
-interface ScoutSummary { total_queries: number; blocked_queries: number; block_rate: number }
+interface ScoutSummary { allowed_requests: number; blocked_requests: number; threat_count: number }
 
 interface Ticket { ticket_id: string; subject: string; status: string; priority: string; created_at: string }
 interface Incident { incident_id: string; summary: string; severity: string; status: string }
@@ -61,6 +61,9 @@ export default function DashboardPage() {
   }, [])
 
   const fmt = (n: number | undefined) => (n !== undefined ? n.toLocaleString() : '—')
+
+  const scoutTotal = (scout?.allowed_requests ?? 0) + (scout?.blocked_requests ?? 0)
+  const scoutBlockRate = scout && scoutTotal > 0 ? ((scout.blocked_requests / scoutTotal) * 100).toFixed(1) : null
 
   return (
     <div className="flex flex-col gap-4.5">
@@ -115,14 +118,10 @@ export default function DashboardPage() {
         />
         <KpiCard
           label="DNS Blocks Today"
-          value={typeof scout?.blocked_queries === 'number' ? fmt(scout.blocked_queries) : '—'}
-          sub={
-            typeof scout?.block_rate === 'number'
-              ? `${scout.block_rate}% block rate`
-              : 'Awaiting data feed'
-          }
+          value={typeof scout?.blocked_requests === 'number' ? fmt(scout.blocked_requests) : '—'}
+          sub={scoutBlockRate !== null ? `${scoutBlockRate}% block rate` : 'Awaiting data feed'}
           icon="block"
-          tone={typeof scout?.blocked_queries === 'number' ? 'info' : 'muted'}
+          tone={typeof scout?.blocked_requests === 'number' ? 'info' : 'muted'}
         />
       </div>
 
