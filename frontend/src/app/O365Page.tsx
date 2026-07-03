@@ -81,7 +81,9 @@ export default function O365Page() {
   }
 
   const mailboxColumns: Column<Mailbox>[] = [
-    { key: 'display_name', header: 'Name' },
+    { key: 'display_name', header: 'Name', render: (row) => (
+      <div className="truncate" style={{ width: '160px', maxWidth: '160px', overflow: 'hidden' }} title={row.display_name}>{row.display_name}</div>
+    ) },
     { key: 'email', header: 'Email', render: (row) => (
       <div className="font-mono text-xs truncate" style={{ width: '200px', maxWidth: '200px', overflow: 'hidden' }} title={row.email}>{row.email}</div>
     ) },
