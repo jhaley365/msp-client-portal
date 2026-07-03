@@ -83,7 +83,7 @@ export default function O365Page() {
   const mailboxColumns: Column<Mailbox>[] = [
     { key: 'display_name', header: 'Name' },
     { key: 'email', header: 'Email', render: (row) => (
-      <div className="font-mono text-xs truncate" style={{ maxWidth: '200px' }} title={row.email}>{row.email}</div>
+      <div className="font-mono text-xs truncate" style={{ width: '200px', maxWidth: '200px', overflow: 'hidden' }} title={row.email}>{row.email}</div>
     ) },
     {
       key: 'account_enabled',
