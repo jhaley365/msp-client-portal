@@ -3,6 +3,7 @@ import api from '../lib/api'
 import KpiCard from '../components/KpiCard'
 import DataTable, { Column } from '../components/DataTable'
 import Badge from '../components/Badge'
+import { TONE_FG } from '../lib/tone'
 
 interface Summary {
   total_licenses: number
@@ -62,11 +63,9 @@ export default function O365Page() {
         const pct = row.total_units > 0
           ? Math.round((row.consumed_units / row.total_units) * 100)
           : 0
-        const color = pct >= 90 ? 'bg-red-100 text-red-700'
-          : pct >= 75 ? 'bg-orange-100 text-orange-700'
-          : 'bg-green-100 text-green-700'
+        const tone = pct >= 90 ? TONE_FG.crit : pct >= 75 ? TONE_FG.warn : TONE_FG.ok
         return (
-          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${color}`}>
+          <span className="pill" style={{ color: tone, background: `${tone}22` }}>
             {pct}%
           </span>
         )
@@ -96,8 +95,8 @@ export default function O365Page() {
       key: 'license_names',
       header: 'License',
       render: (row) => row.license_names
-        ? <div className="text-xs text-gray-700 truncate" style={{ maxWidth: '160px' }} title={row.license_names}>{row.license_names}</div>
-        : <span className="text-xs text-gray-400">Not Licensed</span>,
+        ? <div className="text-xs text-ink-secondary truncate" style={{ maxWidth: '160px' }} title={row.license_names}>{row.license_names}</div>
+        : <span className="text-xs text-ink-muted">Not Licensed</span>,
     },
     {
       key: 'mailbox_size_mb',
@@ -108,19 +107,19 @@ export default function O365Page() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-bold text-gray-800">Office 365</h1>
+      <h1 className="font-display text-xl font-bold text-white">Office 365</h1>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <KpiCard label="Total Licenses" value={summary?.total_licenses ?? '--'} accentColor="border-blue-500" />
-        <KpiCard label="Licenses Used" value={summary?.consumed_licenses ?? '--'} accentColor="border-orange-500" />
-        <KpiCard label="Licenses Available" value={summary?.available_licenses ?? '--'} accentColor="border-green-500" />
-        <KpiCard label="Total Users" value={summary?.total_mailboxes ?? '--'} accentColor="border-gray-400" />
+        <KpiCard label="Total Licenses" value={summary?.total_licenses ?? '--'} icon="mail" tone="info" />
+        <KpiCard label="Licenses Used" value={summary?.consumed_licenses ?? '--'} icon="mail" tone="warn" />
+        <KpiCard label="Licenses Available" value={summary?.available_licenses ?? '--'} icon="mail" tone="ok" />
+        <KpiCard label="Total Users" value={summary?.total_mailboxes ?? '--'} icon="group" tone="muted" />
       </div>
 
       <div className="section-card">
-        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-700">License SKUs</h2>
-          <span className="text-xs text-gray-400">{licenses.length} SKUs</span>
+        <div className="p-4 border-b border-white/[0.07] flex items-center justify-between">
+          <h2 className="font-display text-sm font-semibold text-white">License SKUs</h2>
+          <span className="text-xs text-ink-muted">{licenses.length} SKUs</span>
         </div>
         <DataTable<License>
           columns={licenseColumns}
@@ -132,9 +131,9 @@ export default function O365Page() {
       </div>
 
       <div className="section-card">
-        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-700">Users</h2>
-          <span className="text-xs text-gray-400">{mailboxes.length} total</span>
+        <div className="p-4 border-b border-white/[0.07] flex items-center justify-between">
+          <h2 className="font-display text-sm font-semibold text-white">Users</h2>
+          <span className="text-xs text-ink-muted">{mailboxes.length} total</span>
         </div>
         <div className="overflow-y-auto" style={{ maxHeight: '32rem' }}>
           <DataTable<Mailbox>

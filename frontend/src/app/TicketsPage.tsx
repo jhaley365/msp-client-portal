@@ -78,7 +78,7 @@ export default function TicketsPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-bold text-gray-800">Support Tickets</h1>
+      <h1 className="font-display text-xl font-bold text-white">Support Tickets</h1>
 
       <div className="flex gap-2 flex-wrap">
         {filters.map((f) => (
@@ -93,9 +93,9 @@ export default function TicketsPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <KpiCard label="Total Tickets" value={summary?.total ?? '--'} />
-        <KpiCard label="Open Tickets" value={summary?.open ?? '--'} accentColor="border-orange-500" />
-        <KpiCard label="Avg Response Time" value="--" accentColor="border-gray-400" />
+        <KpiCard label="Total Tickets" value={summary?.total ?? '--'} icon="confirmation_number" tone="info" />
+        <KpiCard label="Open Tickets" value={summary?.open ?? '--'} icon="mark_email_unread" tone="warn" />
+        <KpiCard label="Avg Response Time" value="--" icon="schedule" tone="muted" />
       </div>
 
       <div className="section-card">

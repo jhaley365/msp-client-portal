@@ -75,20 +75,20 @@ export default function SecurityPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-bold text-gray-800">Security — Huntress</h1>
+      <h1 className="font-display text-xl font-bold text-white">Security — Huntress</h1>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <KpiCard label="Total Agents" value={summary?.total_agents ?? '--'} accentColor="border-gray-400" />
-        <KpiCard label="Online Agents" value={summary?.online_agents ?? '--'} accentColor="border-green-500" />
-        <KpiCard label="Open Incidents" value={summary?.open_incidents ?? '--'} accentColor="border-orange-500" />
-        <KpiCard label="Critical Incidents" value={summary?.critical_incidents ?? '--'} accentColor="border-red-500" />
+        <KpiCard label="Total Agents" value={summary?.total_agents ?? '--'} icon="shield" tone="muted" />
+        <KpiCard label="Online Agents" value={summary?.online_agents ?? '--'} icon="shield" tone="ok" />
+        <KpiCard label="Open Incidents" value={summary?.open_incidents ?? '--'} icon="gpp_maybe" tone="warn" />
+        <KpiCard label="Critical Incidents" value={summary?.critical_incidents ?? '--'} icon="gpp_maybe" tone="crit" />
       </div>
 
       <div className="space-y-4">
         <div className="section-card">
-          <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-700">Incidents</h2>
-            <span className="text-xs text-gray-400">{incidents.length} total</span>
+          <div className="p-4 border-b border-white/[0.07] flex items-center justify-between">
+            <h2 className="font-display text-sm font-semibold text-white">Incidents</h2>
+            <span className="text-xs text-ink-muted">{incidents.length} total</span>
           </div>
           <div className="overflow-y-auto" style={{ maxHeight: '32rem' }}>
             <DataTable<Incident>
@@ -101,9 +101,9 @@ export default function SecurityPage() {
         </div>
 
         <div className="section-card">
-          <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-700">Agents</h2>
-            <span className="text-xs text-gray-400">{agents.length} total</span>
+          <div className="p-4 border-b border-white/[0.07] flex items-center justify-between">
+            <h2 className="font-display text-sm font-semibold text-white">Agents</h2>
+            <span className="text-xs text-ink-muted">{agents.length} total</span>
           </div>
           <div className="overflow-y-auto" style={{ maxHeight: '32rem' }}>
             <DataTable<Agent>

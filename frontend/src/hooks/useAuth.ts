@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import api from '../lib/api'
 
 interface User {
@@ -6,6 +6,11 @@ interface User {
   name: string
   email: string
   is_admin: boolean
+}
+
+interface CustomerOption {
+  customer_id: string
+  name: string
 }
 
 export function useAuth() {
@@ -17,6 +22,19 @@ export function useAuth() {
   const [viewAsCustomerId, setViewAsCustomerIdState] = useState<string>(() => {
     return localStorage.getItem('viewAsCustomerId') || ''
   })
+
+  const [customers, setCustomers] = useState<CustomerOption[]>([])
+
+  useEffect(() => {
+    if (user?.is_admin) {
+      api.get('/admin/customers').then((r) => setCustomers(r.data)).catch(() => {})
+    }
+  }, [user?.is_admin])
+
+  const activeCustomerName =
+    user?.is_admin && viewAsCustomerId
+      ? customers.find((c) => c.customer_id === viewAsCustomerId)?.name || viewAsCustomerId
+      : user?.name || user?.email || ''
 
   const setViewAsCustomerId = (id: string) => {
     if (id) {
@@ -48,5 +66,5 @@ export function useAuth() {
     setViewAsCustomerIdState('')
   }
 
-  return { user, login, logout, viewAsCustomerId, setViewAsCustomerId }
+  return { user, login, logout, viewAsCustomerId, setViewAsCustomerId, customers, activeCustomerName }
 }

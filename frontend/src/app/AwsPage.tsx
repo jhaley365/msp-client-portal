@@ -111,7 +111,7 @@ export default function AwsPage() {
   }, [activeTab])
 
   const instanceColumns: Column<Instance>[] = [
-    { key: 'name_tag', header: 'Name', render: (row) => row.name_tag || <span className="text-gray-400 italic">—</span> },
+    { key: 'name_tag', header: 'Name', render: (row) => row.name_tag || <span className="italic text-ink-muted">—</span> },
     { key: 'instance_id', header: 'Instance ID' },
     { key: 'instance_type', header: 'Type' },
     { key: 'state', header: 'State', render: (row) => <Badge state={row.state} /> },
@@ -148,7 +148,7 @@ export default function AwsPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-bold text-gray-800">AWS</h1>
+      <h1 className="font-display text-xl font-bold text-white">AWS</h1>
 
       <div className="flex gap-2">
         {tabs.map((tab) => (

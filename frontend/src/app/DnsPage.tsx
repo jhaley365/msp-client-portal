@@ -79,44 +79,44 @@ export default function DnsPage() {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-800">DNS — ScoutDNS</h1>
+        <h1 className="font-display text-xl font-bold text-white">DNS — ScoutDNS</h1>
         {summary?.last_synced_at && (
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-ink-muted">
             Synced {fmtDate(summary.last_synced_at)} · {summary.period}
           </span>
         )}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <KpiCard label="Allowed Requests" value={summary?.allowed_requests?.toLocaleString() ?? '--'} accentColor="border-green-500" />
-        <KpiCard label="Blocked Requests" value={summary?.blocked_requests?.toLocaleString() ?? '--'} accentColor="border-red-500" />
-        <KpiCard label="Threats Detected" value={summary?.threat_count?.toLocaleString() ?? '--'} accentColor="border-orange-500" />
-        <KpiCard label="Block Rate" value={summary ? blockRatePct : '--'} accentColor="border-purple-500" />
+        <KpiCard label="Allowed Requests" value={summary?.allowed_requests?.toLocaleString() ?? '--'} icon="check_circle" tone="ok" />
+        <KpiCard label="Blocked Requests" value={summary?.blocked_requests?.toLocaleString() ?? '--'} icon="block" tone="crit" />
+        <KpiCard label="Threats Detected" value={summary?.threat_count?.toLocaleString() ?? '--'} icon="gpp_maybe" tone="warn" />
+        <KpiCard label="Block Rate" value={summary ? blockRatePct : '--'} icon="percent" tone="purple" />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <KpiCard label="Online Clients" value={summary?.online_clients?.toLocaleString() ?? '--'} accentColor="border-blue-500" />
-        <KpiCard label="Offline Clients" value={summary?.offline_clients?.toLocaleString() ?? '--'} accentColor="border-yellow-500" />
+        <KpiCard label="Online Clients" value={summary?.online_clients?.toLocaleString() ?? '--'} icon="dns" tone="info" />
+        <KpiCard label="Offline Clients" value={summary?.offline_clients?.toLocaleString() ?? '--'} icon="dns" tone="muted" />
       </div>
 
       {/* Top categories and domains */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="section-card p-5">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">Top Blocked Categories</h2>
+          <h2 className="font-display text-sm font-semibold text-white mb-3">Top Blocked Categories</h2>
           {loading ? (
             <div className="space-y-2">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-6 bg-gray-200 rounded animate-pulse" />
+                <div key={i} className="h-6 bg-white/10 rounded animate-pulse" />
               ))}
             </div>
           ) : (summary?.top_categories ?? []).length === 0 ? (
-            <p className="text-sm text-gray-400">No category data available.</p>
+            <p className="text-sm text-ink-muted">No category data available.</p>
           ) : (
-            <ul className="divide-y divide-gray-100">
+            <ul className="divide-y divide-white/[0.07]">
               {(summary?.top_categories ?? []).map((c, i) => (
                 <li key={i} className="flex items-center justify-between py-2 text-sm">
-                  <span className="text-gray-700 truncate max-w-[60%]">{c.name}</span>
-                  <span className="text-gray-500 tabular-nums">{Number(c.count).toLocaleString()}</span>
+                  <span className="text-ink-secondary truncate max-w-[60%]">{c.name}</span>
+                  <span className="text-ink-muted tabular-nums">{Number(c.count).toLocaleString()}</span>
                 </li>
               ))}
             </ul>
@@ -124,21 +124,21 @@ export default function DnsPage() {
         </div>
 
         <div className="section-card p-5">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">Top Blocked Domains</h2>
+          <h2 className="font-display text-sm font-semibold text-white mb-3">Top Blocked Domains</h2>
           {loading ? (
             <div className="space-y-2">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-6 bg-gray-200 rounded animate-pulse" />
+                <div key={i} className="h-6 bg-white/10 rounded animate-pulse" />
               ))}
             </div>
           ) : (summary?.top_domains ?? []).length === 0 ? (
-            <p className="text-sm text-gray-400">No domain data available.</p>
+            <p className="text-sm text-ink-muted">No domain data available.</p>
           ) : (
-            <ul className="divide-y divide-gray-100">
+            <ul className="divide-y divide-white/[0.07]">
               {(summary?.top_domains ?? []).map((d, i) => (
                 <li key={i} className="flex items-center justify-between py-2 text-sm">
-                  <span className="text-gray-700 font-mono text-xs truncate max-w-[60%]">{d.domain}</span>
-                  <span className="text-gray-500 tabular-nums">{Number(d.count).toLocaleString()}</span>
+                  <span className="text-ink-secondary font-mono text-xs truncate max-w-[60%]">{d.domain}</span>
+                  <span className="text-ink-muted tabular-nums">{Number(d.count).toLocaleString()}</span>
                 </li>
               ))}
             </ul>
@@ -148,9 +148,9 @@ export default function DnsPage() {
 
       {/* Sites */}
       <div className="section-card">
-        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-700">Network Sites</h2>
-          <span className="text-xs text-gray-400">{sites.length} total</span>
+        <div className="p-4 border-b border-white/[0.07] flex items-center justify-between">
+          <h2 className="font-display text-sm font-semibold text-white">Network Sites</h2>
+          <span className="text-xs text-ink-muted">{sites.length} total</span>
         </div>
         <div className="overflow-y-auto" style={{ maxHeight: '20rem' }}>
           <DataTable<Site>
@@ -165,9 +165,9 @@ export default function DnsPage() {
 
       {/* Roaming clients */}
       <div className="section-card">
-        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-700">Roaming Clients</h2>
-          <span className="text-xs text-gray-400">{clients.length} total</span>
+        <div className="p-4 border-b border-white/[0.07] flex items-center justify-between">
+          <h2 className="font-display text-sm font-semibold text-white">Roaming Clients</h2>
+          <span className="text-xs text-ink-muted">{clients.length} total</span>
         </div>
         <div className="overflow-y-auto" style={{ maxHeight: '32rem' }}>
           <DataTable<Client>

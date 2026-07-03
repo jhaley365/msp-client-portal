@@ -23,7 +23,7 @@ function SkeletonRow({ cols }: { cols: number }) {
     <tr>
       {Array.from({ length: cols }).map((_, i) => (
         <td key={i} className="px-4 py-3">
-          <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4" />
+          <div className="h-4 w-3/[0.04] animate-pulse rounded bg-white/10" />
         </td>
       ))}
     </tr>
@@ -37,30 +37,30 @@ export default function DataTable<T extends Record<string, any>>({
   return (
     <div>
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-white/[0.07] text-sm">
+          <thead className="bg-white/[0.04]">
             <tr>
               {columns.map(col => (
-                <th key={col.key} className={`px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap ${col.className ?? ''}`}>
+                <th key={col.key} className={`px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase tracking-wider whitespace-nowrap ${col.className ?? ''}`}>
                   {col.header}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 bg-white">
+          <tbody className="divide-y divide-white/[0.07]">
             {loading && data.length === 0 ? (
               Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={columns.length} />)
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-4 py-10 text-center text-gray-400">
+                <td colSpan={columns.length} className="px-4 py-10 text-center text-ink-muted">
                   {emptyMessage}
                 </td>
               </tr>
             ) : (
               data.map((row, i) => (
-                <tr key={(row[keyField] as string) ?? i} className="hover:bg-gray-50 transition-colors">
+                <tr key={(row[keyField] as string) ?? i} className="transition-colors hover:bg-white/[0.04]">
                   {columns.map(col => (
-                    <td key={col.key} className={`px-4 py-3 ${col.className ? col.className + ' overflow-hidden' : 'whitespace-nowrap'}`}>
+                    <td key={col.key} className={`px-4 py-3 text-ink-secondary ${col.className ? col.className + ' overflow-hidden' : 'whitespace-nowrap'}`}>
                       {col.render ? col.render(row) : String(row[col.key] ?? '—')}
                     </td>
                   ))}
@@ -71,17 +71,17 @@ export default function DataTable<T extends Record<string, any>>({
         </table>
       </div>
       {hasMore && onLoadMore && !loading && (
-        <div className="px-4 py-3 border-t border-gray-100">
+        <div className="border-t border-white/[0.07] px-4 py-3">
           <button
             onClick={onLoadMore}
-            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+            className="text-sm font-medium text-icon-blue hover:text-white"
           >
             Load more →
           </button>
         </div>
       )}
       {loading && data.length > 0 && (
-        <div className="px-4 py-3 border-t border-gray-100 text-sm text-gray-400">Loading…</div>
+        <div className="border-t border-white/[0.07] px-4 py-3 text-sm text-ink-muted">Loading…</div>
       )}
     </div>
   )

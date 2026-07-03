@@ -1,32 +1,41 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuthContext } from '../app/AuthContext'
-import api from '../lib/api'
+import { initials } from '../lib/user'
+import Icon from './Icon'
+import Logo from './Logo'
 
 const NAV = [
-  { to: '/',         label: 'Dashboard',  end: true },
-  { to: '/aws',      label: 'AWS' },
-  { to: '/tickets',  label: 'Tickets' },
-  { to: '/security', label: 'Huntress' },
-  { to: '/dns',      label: 'ScoutDNS' },
-  { to: '/o365',     label: 'Office 365' },
+  { to: '/', label: 'Dashboard', icon: 'dashboard', end: true },
+  { to: '/aws', label: 'AWS', icon: 'cloud' },
+  { to: '/tickets', label: 'Tickets', icon: 'confirmation_number' },
+  { to: '/security', label: 'Huntress', icon: 'shield' },
+  { to: '/dns', label: 'ScoutDNS', icon: 'dns' },
+  { to: '/o365', label: 'Office 365', icon: 'mail' },
 ]
 
-interface CustomerOption { customer_id: string; name: string }
-
 export default function Layout() {
-  const { user, logout, viewAsCustomerId, setViewAsCustomerId } = useAuthContext()
+  const { user, logout, viewAsCustomerId, setViewAsCustomerId, customers, activeCustomerName } = useAuthContext()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
-  const [customers, setCustomers] = useState<CustomerOption[]>([])
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const userMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (user?.is_admin) {
-      api.get('/admin/customers').then(r => setCustomers(r.data)).catch(() => {})
+    if (!userMenuOpen) return
+    const onClick = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false)
+      }
     }
-  }, [user?.is_admin])
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
+  }, [userMenuOpen])
 
-  const handleLogout = () => { logout(); navigate('/login', { replace: true }) }
+  const handleLogout = () => {
+    logout()
+    navigate('/login', { replace: true })
+  }
 
   const handleCustomerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setViewAsCustomerId(e.target.value)
@@ -34,108 +43,141 @@ export default function Layout() {
     window.location.reload()
   }
 
-  const displayName = user?.is_admin && viewAsCustomerId
-    ? (customers.find(c => c.customer_id === viewAsCustomerId)?.name || viewAsCustomerId)
-    : (user?.name || user?.email)
-
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Top header */}
-      <header style={{ backgroundColor: '#1e3a5f' }} className="text-white shadow-md flex-shrink-0">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
-          <span className="text-base font-bold tracking-tight">MSP Client Portal</span>
-          <div className="flex items-center gap-3">
-            {user?.is_admin && customers.length > 0 ? (
-              <select
-                value={viewAsCustomerId || user.customer_id}
-                onChange={handleCustomerChange}
-                className="text-xs bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-lg px-2 py-1.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/40"
-                style={{ minWidth: '160px' }}
-              >
-                <option value={user.customer_id} style={{ color: '#000' }}>
-                  {user.name || user.customer_id} (My Org)
-                </option>
-                <option disabled style={{ color: '#999' }}>──────────────</option>
-                {customers
-                  .filter(c => c.customer_id !== user.customer_id)
-                  .map(c => (
-                    <option key={c.customer_id} value={c.customer_id} style={{ color: '#000' }}>
-                      {c.name || c.customer_id}
-                    </option>
-                  ))}
-              </select>
-            ) : (
-              <span className="hidden sm:block text-sm text-blue-200">{displayName}</span>
-            )}
-            <button
-              onClick={handleLogout}
-              className="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors"
+    <div className="flex h-screen flex-col overflow-hidden bg-page text-ink-primary">
+      {/* Header */}
+      <header className="flex h-[60px] flex-none items-center gap-2 border-b border-white/[0.07] bg-chrome px-3 sm:gap-4 sm:px-6">
+        <Logo />
+        <div className="flex-1" />
+
+        {user?.is_admin && customers.length > 0 ? (
+          <div className="flex max-w-[110px] items-center gap-2 rounded-lg border border-white/[0.12] bg-white/[0.06] px-2 py-1.5 sm:max-w-[240px] sm:px-3">
+            <Icon name="apartment" className="hidden text-[17px] text-ink-muted sm:inline" />
+            <select
+              value={viewAsCustomerId || user.customer_id}
+              onChange={handleCustomerChange}
+              className="w-full min-w-0 cursor-pointer truncate bg-transparent text-[13px] font-semibold text-ink-primary focus:outline-none"
             >
-              Sign out
-            </button>
-            <button
-              className="sm:hidden p-1"
-              onClick={() => setMenuOpen(!menuOpen)}
-              aria-label="Toggle menu"
-            >
-              <div className="space-y-1">
-                <span className={`block w-5 h-0.5 bg-white transition-all ${menuOpen ? 'rotate-45 translate-y-1.5' : ''}`} />
-                <span className={`block w-5 h-0.5 bg-white transition-all ${menuOpen ? 'opacity-0' : ''}`} />
-                <span className={`block w-5 h-0.5 bg-white transition-all ${menuOpen ? '-rotate-45 -translate-y-1.5' : ''}`} />
-              </div>
-            </button>
+              <option value={user.customer_id} className="text-black">
+                {user.name || user.customer_id} (My Org)
+              </option>
+              <option disabled className="text-gray-400">
+                ──────────────
+              </option>
+              {customers
+                .filter((c) => c.customer_id !== user.customer_id)
+                .map((c) => (
+                  <option key={c.customer_id} value={c.customer_id} className="text-black">
+                    {c.name || c.customer_id}
+                  </option>
+                ))}
+            </select>
           </div>
+        ) : (
+          <div className="hidden items-center gap-2 rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-1.5 text-[13px] font-semibold text-ink-secondary sm:flex">
+            <Icon name="apartment" className="text-[17px] text-ink-muted" />
+            {activeCustomerName}
+          </div>
+        )}
+
+        <button
+          className="flex h-[38px] w-[38px] flex-none items-center justify-center rounded-[9px] border border-white/[0.12] bg-white/[0.04]"
+          aria-label="Notifications"
+        >
+          <Icon name="notifications" className="text-[19px] text-ink-secondary" />
+        </button>
+
+        <div className="relative" ref={userMenuRef}>
+          <button
+            onClick={() => setUserMenuOpen((v) => !v)}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-[13px] font-bold text-white"
+            aria-label="Account menu"
+          >
+            {initials(user?.name || user?.email)}
+          </button>
+          {userMenuOpen && (
+            <div className="absolute right-0 top-11 z-20 w-56 rounded-lg border border-white/[0.12] bg-panel py-1.5 shadow-xl">
+              <div className="truncate border-b border-white/[0.07] px-3.5 py-2 text-xs text-ink-muted">
+                {user?.email}
+              </div>
+              <button
+                onClick={handleLogout}
+                className="flex w-full items-center gap-2 px-3.5 py-2 text-left text-sm font-medium text-ink-secondary hover:bg-white/[0.06] hover:text-white"
+              >
+                <Icon name="logout" className="text-[17px]" />
+                Sign out
+              </button>
+            </div>
+          )}
         </div>
+
+        <button
+          className="p-1 sm:hidden"
+          onClick={() => setMenuOpen((v) => !v)}
+          aria-label="Toggle menu"
+        >
+          <div className="space-y-1">
+            <span className={`block h-0.5 w-5 bg-white transition-all ${menuOpen ? 'translate-y-1.5 rotate-45' : ''}`} />
+            <span className={`block h-0.5 w-5 bg-white transition-all ${menuOpen ? 'opacity-0' : ''}`} />
+            <span className={`block h-0.5 w-5 bg-white transition-all ${menuOpen ? '-translate-y-1.5 -rotate-45' : ''}`} />
+          </div>
+        </button>
       </header>
 
       {/* Tab nav — desktop */}
-      <nav className="bg-white border-b border-gray-200 flex-shrink-0 hidden sm:block">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex gap-0 overflow-x-auto">
-          {NAV.map(item => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                `tab-btn ${isActive ? 'tab-btn-active' : 'tab-btn-inactive'}`
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </div>
+      <nav className="hidden h-12 flex-none items-stretch gap-0.5 border-b border-white/[0.07] bg-chrome px-4 sm:flex sm:px-6">
+        {NAV.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            className={({ isActive }) =>
+              `-mb-px flex items-center gap-2 border-b-2 px-3.5 text-[13.5px] transition-colors ${
+                isActive
+                  ? 'border-accent font-bold text-white'
+                  : 'border-transparent font-medium text-ink-muted hover:text-white'
+              }`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <Icon name={item.icon} className={`text-[18px] ${isActive ? 'text-accent' : 'text-ink-faint'}`} />
+                {item.label}
+              </>
+            )}
+          </NavLink>
+        ))}
       </nav>
 
       {/* Mobile menu */}
       {menuOpen && (
-        <nav className="sm:hidden bg-white border-b border-gray-200 px-4 py-2 flex flex-col gap-1">
-          {NAV.map(item => (
+        <nav className="flex flex-col gap-1 border-b border-white/[0.07] bg-chrome px-4 py-2 sm:hidden">
+          {NAV.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.end}
               onClick={() => setMenuOpen(false)}
               className={({ isActive }) =>
-                `px-3 py-2 rounded-lg text-sm font-medium ${isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`
+                `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${
+                  isActive ? 'bg-accent/[0.15] text-white' : 'text-ink-secondary hover:bg-white/[0.06]'
+                }`
               }
             >
+              <Icon name={item.icon} className="text-[18px]" />
               {item.label}
             </NavLink>
           ))}
-          <div className="pt-2 border-t border-gray-100 text-xs text-gray-400 px-3 pb-1">
-            {displayName}
+          <div className="border-t border-white/[0.07] px-3 pb-1 pt-2 text-xs text-ink-muted">
+            {activeCustomerName}
           </div>
         </nav>
       )}
 
       {/* Page content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 overflow-y-auto p-6">
         <Outlet />
       </main>
-
-      <footer className="text-center text-xs text-gray-400 py-3 border-t border-gray-200">
-        MSP Client Portal · {new Date().getFullYear()}
-      </footer>
     </div>
   )
 }

@@ -8,12 +8,19 @@ interface User {
   is_admin: boolean
 }
 
+interface CustomerOption {
+  customer_id: string
+  name: string
+}
+
 interface AuthContextType {
   user: User | null
   login: (email: string, password: string) => Promise<void>
   logout: () => void
   viewAsCustomerId: string
   setViewAsCustomerId: (id: string) => void
+  customers: CustomerOption[]
+  activeCustomerName: string
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
