@@ -6,14 +6,12 @@ from typing import Any
 
 import boto3
 from boto3.dynamodb.conditions import Key
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 
 from app.core.config import DYNAMODB_ENDPOINT_URL, DYNAMODB_REGION
 from app.core.dependencies import get_current_user
 
 router = APIRouter(prefix="/o365", tags=["o365"])
-
-_PAGE_SIZE = 50
 
 TABLE_LICENSES = "O365Licenses"
 TABLE_MAILBOXES = "O365Mailboxes"
@@ -105,30 +103,23 @@ def list_licenses(user: dict = Depends(get_current_user)) -> dict:
 
 
 @router.get("/mailboxes")
-def list_mailboxes(
-    last_key: str | None = Query(default=None),
-    user: dict = Depends(get_current_user),
-) -> dict:
-    """Return a paginated list of O365 mailboxes for the authenticated customer."""
+def list_mailboxes(user: dict = Depends(get_current_user)) -> dict:
+    """Return all O365 mailboxes for the authenticated customer."""
     customer_id: str = user["customer_id"]
     tbl = _table(TABLE_MAILBOXES)
 
+    items: list[dict] = []
     kwargs: dict[str, Any] = {
         "IndexName": "customer_id-last_synced_at-index",
         "KeyConditionExpression": Key("customer_id").eq(customer_id),
-        "Limit": _PAGE_SIZE,
         "ScanIndexForward": False,
     }
-    if last_key:
-        kwargs["ExclusiveStartKey"] = {
-            "customer_id": customer_id,
-            "last_synced_at": last_key,
-            "mailbox_id": last_key,
-        }
+    while True:
+        resp = tbl.query(**kwargs)
+        items.extend(resp.get("Items", []))
+        last_key = resp.get("LastEvaluatedKey")
+        if not last_key:
+            break
+        kwargs["ExclusiveStartKey"] = last_key
 
-    resp = tbl.query(**kwargs)
-    return {
-        "items": resp.get("Items", []),
-        "next_key": resp.get("LastEvaluatedKey", {}).get("last_synced_at"),
-        "count": resp.get("Count", 0),
-    }
+    return {"items": items, "count": len(items)}
