@@ -115,10 +115,14 @@ export default function DashboardPage() {
         />
         <KpiCard
           label="DNS Blocks Today"
-          value={scout ? fmt(scout.blocked_queries) : '—'}
-          sub={scout ? `${scout.block_rate}% block rate` : 'Awaiting data feed'}
+          value={typeof scout?.blocked_queries === 'number' ? fmt(scout.blocked_queries) : '—'}
+          sub={
+            typeof scout?.block_rate === 'number'
+              ? `${scout.block_rate}% block rate`
+              : 'Awaiting data feed'
+          }
           icon="block"
-          tone={scout ? 'info' : 'muted'}
+          tone={typeof scout?.blocked_queries === 'number' ? 'info' : 'muted'}
         />
       </div>
 
