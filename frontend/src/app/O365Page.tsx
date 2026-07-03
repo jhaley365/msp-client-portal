@@ -25,6 +25,8 @@ interface Mailbox {
   email: string
   account_enabled: boolean
   licensed: boolean
+  license_names: string
+  mailbox_size_mb: number
 }
 
 export default function O365Page() {
@@ -72,6 +74,12 @@ export default function O365Page() {
     },
   ]
 
+  const fmtSize = (mb: number) => {
+    if (!mb) return '—'
+    if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`
+    return `${mb} MB`
+  }
+
   const mailboxColumns: Column<Mailbox>[] = [
     { key: 'display_name', header: 'Name' },
     { key: 'email', header: 'Email', className: 'font-mono text-xs' },
@@ -81,9 +89,16 @@ export default function O365Page() {
       render: (row) => <Badge state={row.account_enabled ? 'active' : 'disabled'} />,
     },
     {
-      key: 'licensed',
-      header: 'Licensed',
-      render: (row) => <Badge state={row.licensed ? 'enabled' : 'offline'} />,
+      key: 'license_names',
+      header: 'License',
+      render: (row) => row.license_names
+        ? <span className="text-xs text-gray-700">{row.license_names}</span>
+        : <span className="text-xs text-gray-400">Not Licensed</span>,
+    },
+    {
+      key: 'mailbox_size_mb',
+      header: 'Mailbox Size',
+      render: (row) => <span className="text-xs">{fmtSize(row.mailbox_size_mb)}</span>,
     },
   ]
 

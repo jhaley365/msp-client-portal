@@ -166,6 +166,36 @@ def _fetch_users(session: requests.Session) -> list[dict]:
     return users
 
 
+def _fetch_mailbox_usage(session: requests.Session) -> dict[str, int]:
+    """Fetch mailbox storage usage in MB keyed by UPN.
+
+    Requires Reports.Read.All application permission on the app registration.
+    Returns an empty dict silently if the permission is not granted.
+    """
+    import csv
+    import io
+
+    url = f"{GRAPH_BASE_URL}/reports/getMailboxUsageDetail(period='D7')"
+    try:
+        # Graph returns CSV for report endpoints
+        resp = session.get(url, headers={"Accept": "text/csv"}, timeout=60)
+        if resp.status_code == 403:
+            logger.warning("Reports.Read.All not granted — mailbox sizes will be 0")
+            return {}
+        resp.raise_for_status()
+        reader = csv.DictReader(io.StringIO(resp.text))
+        usage: dict[str, int] = {}
+        for row in reader:
+            upn = row.get("User Principal Name", "").strip()
+            bytes_used = row.get("Storage Used (Byte)", "0").strip() or "0"
+            if upn:
+                usage[upn.lower()] = int(int(bytes_used) / (1024 * 1024))  # bytes → MB
+        return usage
+    except requests.RequestException as exc:
+        logger.warning("Could not fetch mailbox usage report: %s", exc)
+        return {}
+
+
 # ---------------------------------------------------------------------------
 # Lambda handler
 # ---------------------------------------------------------------------------
@@ -209,6 +239,12 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
         raw_skus = _fetch_subscribed_skus(session)
         logger.info("Customer %s: fetched %d SKU(s)", customer_id, len(raw_skus))
 
+        # Build skuId → skuPartNumber map for resolving user license names
+        sku_id_to_name: dict[str, str] = {
+            sku.get("skuId", ""): sku.get("skuPartNumber", "")
+            for sku in raw_skus if sku.get("skuId")
+        }
+
         license_items: list[dict] = []
         for sku in raw_skus:
             sku_id: str = sku.get("skuId", "")
@@ -233,6 +269,9 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
             _batch_write(tbl_licenses, license_items)
             total_licenses += len(license_items)
 
+        # ── Mailbox usage report ──────────────────────────────────────────────
+        mailbox_usage = _fetch_mailbox_usage(session)
+
         # ── Users / Mailboxes ─────────────────────────────────────────────────
         raw_users = _fetch_users(session)
         logger.info("Customer %s: fetched %d user(s)", customer_id, len(raw_users))
@@ -242,7 +281,13 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
             upn: str = user.get("userPrincipalName", "")
             if not upn or upn.lower().startswith("sync_"):
                 continue
-            licensed = len(user.get("assignedLicenses", [])) > 0
+            assigned = user.get("assignedLicenses", [])
+            license_names = [
+                sku_id_to_name.get(lic.get("skuId", ""), "")
+                for lic in assigned
+                if sku_id_to_name.get(lic.get("skuId", ""), "")
+            ]
+            mailbox_size_mb = mailbox_usage.get(upn.lower(), 0)
             mailbox_items.append({
                 "mailbox_id": f"{customer_id}#{upn}",
                 "customer_id": customer_id,
@@ -250,7 +295,9 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
                 "display_name": user.get("displayName", "") or "",
                 "email": upn,
                 "account_enabled": user.get("accountEnabled", True),
-                "licensed": licensed,
+                "licensed": len(assigned) > 0,
+                "license_names": ", ".join(license_names) if license_names else "",
+                "mailbox_size_mb": mailbox_size_mb,
                 "last_synced_at": synced_at,
             })
 
