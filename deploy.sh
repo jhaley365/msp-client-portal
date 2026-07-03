@@ -9,6 +9,7 @@ echo "==> Pulling latest code..."
 cd "$REPO_DIR"
 git fetch origin
 git checkout "$BRANCH"
+git checkout -- .
 git pull origin "$BRANCH"
 
 echo "==> Building frontend..."
