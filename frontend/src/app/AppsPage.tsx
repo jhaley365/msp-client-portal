@@ -72,41 +72,10 @@ export default function AppsPage() {
       <h1 className="text-xl font-bold text-gray-800">Apps</h1>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="section-card p-4">
-          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Maestro</div>
-          <div className="flex items-end gap-2">
-            <span className="text-2xl font-bold text-gray-800">{summary?.maestro_in_use ?? '--'}</span>
-            <span className="text-sm text-gray-400 mb-0.5">/ {summary?.maestro_total ?? '--'} total</span>
-          </div>
-          <div className="text-xs text-gray-400 mt-1">In Use</div>
-        </div>
-
-        <div className="section-card p-4">
-          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Titan</div>
-          <div className="flex items-end gap-2">
-            <span className="text-2xl font-bold text-gray-800">{summary?.titan_in_use ?? '--'}</span>
-            <span className="text-sm text-gray-400 mb-0.5">/ {summary?.titan_total ?? '--'} total</span>
-          </div>
-          <div className="text-xs text-gray-400 mt-1">In Use</div>
-        </div>
-
-        <div className="section-card p-4">
-          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">PA Sessions</div>
-          <div className="flex items-end gap-2">
-            <span className="text-2xl font-bold text-gray-800">{summary?.pa_in_use ?? '--'}</span>
-            <span className="text-sm text-gray-400 mb-0.5">/ {summary?.pa_total ?? '--'} total</span>
-          </div>
-          <div className="text-xs text-gray-400 mt-1">In Use</div>
-        </div>
-
-        <div className="section-card p-4">
-          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">DT Sessions</div>
-          <div className="flex items-end gap-2">
-            <span className="text-2xl font-bold text-gray-800">{summary?.dt_in_use ?? '--'}</span>
-            <span className="text-sm text-gray-400 mb-0.5">/ {summary?.dt_total ?? '--'} total</span>
-          </div>
-          <div className="text-xs text-gray-400 mt-1">In Use</div>
-        </div>
+        <KpiCard label="Maestro" value={summary ? `${summary.maestro_in_use} Sessions` : '--'} sub={`${summary?.maestro_total ?? '--'} total`} icon="desktop_windows" tone="warn" />
+        <KpiCard label="Titan" value={summary ? `${summary.titan_in_use} Sessions` : '--'} sub={`${summary?.titan_total ?? '--'} total`} icon="dns" tone="info" />
+        <KpiCard label="PA Sessions" value={summary ? `${summary.pa_in_use} Sessions` : '--'} sub={`${summary?.pa_total ?? '--'} total`} icon="devices" tone="ok" />
+        <KpiCard label="DT Sessions" value={summary ? `${summary.dt_in_use} Sessions` : '--'} sub={`${summary?.dt_total ?? '--'} total`} icon="computer" tone="muted" />
       </div>
 
       <div className="section-card">
