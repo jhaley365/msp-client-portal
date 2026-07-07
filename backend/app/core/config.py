@@ -15,3 +15,9 @@ DYNAMODB_ENDPOINT_URL: str | None = os.environ.get("DYNAMODB_ENDPOINT_URL") or N
 
 # CORS — set to your domain in production
 CORS_ORIGINS: list[str] = os.environ.get("CORS_ORIGINS", "*").split(",")
+
+# RDS SQL Server (XGuardian)
+RDS_HOST: str = os.environ.get("RDS_HOST", "")
+RDS_USER: str = os.environ.get("RDS_USER", "")
+RDS_PASSWORD: str = os.environ.get("RDS_PASSWORD", "")
+RDS_DATABASE: str = os.environ.get("RDS_DATABASE", "xguardian_15")

@@ -6,6 +6,7 @@ import TicketsPage from './TicketsPage'
 import SecurityPage from './SecurityPage'
 import DnsPage from './DnsPage'
 import O365Page from './O365Page'
+import AppsPage from './AppsPage'
 import Layout from '../components/Layout'
 import { AuthProvider, useAuthContext } from './AuthContext'
 
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="security" element={<SecurityPage />} />
           <Route path="dns" element={<DnsPage />} />
           <Route path="o365" element={<O365Page />} />
+          <Route path="apps" element={<AppsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

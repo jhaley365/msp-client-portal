@@ -12,6 +12,7 @@ const NAV = [
   { to: '/security', label: 'Huntress', icon: 'shield' },
   { to: '/dns', label: 'ScoutDNS', icon: 'dns' },
   { to: '/o365', label: 'Office 365', icon: 'mail' },
+  { to: '/apps', label: 'Apps', icon: 'apps' },
 ]
 
 export default function Layout() {
