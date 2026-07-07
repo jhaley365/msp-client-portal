@@ -195,6 +195,14 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
     orgs: list[dict] = orgs_resp.get("data", []) if isinstance(orgs_resp, dict) else []
     logger.info("Fetched %d ScoutDNS organizations", len(orgs))
 
+    # Fetch ALL roaming clients across every org once, pool by profile (lowercase)
+    all_clients: list[dict] = []
+    for org in orgs:
+        oid = str(org.get("id", ""))
+        cr = _get(sess, "/getClients", params={"organizationId": oid, "limit": 500})
+        all_clients.extend(cr.get("data", []) if isinstance(cr, dict) else [])
+    logger.info("Fetched %d total roaming clients across all orgs", len(all_clients))
+
     summaries_written = 0
     sites_written = 0
     clients_written = 0
@@ -255,10 +263,8 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
         sites_resp = _get(sess, "/getLocations", params={"organizationId": org_id})
         sites: list[dict] = sites_resp.get("data", []) if isinstance(sites_resp, dict) else []
 
-        # ── Roaming clients ───────────────────────────────────────────────────
-        clients_resp = _get(sess, "/getClients",
-                            params={"organizationId": org_id, "limit": 500})
-        clients: list[dict] = clients_resp.get("data", []) if isinstance(clients_resp, dict) else []
+        # Use the globally pooled client list (all orgs) for profile-based filtering
+        clients = all_clients
 
         # ── Write a record for every mapped customer ──────────────────────────
         for customer_id, customer_name, profile_filter in customers_for_org:
