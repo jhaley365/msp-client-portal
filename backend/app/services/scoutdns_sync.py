@@ -115,14 +115,14 @@ def _get(sess: requests.Session, path: str, params: dict | None = None) -> dict 
 # ---------------------------------------------------------------------------
 
 
-def _load_customer_map(customers_table: Any) -> dict[str, list[tuple[str, str]]]:
-    """Return {scoutdns_org_id: [(customer_id, customer_name), ...]} for all mapped customers.
+def _load_customer_map(customers_table: Any) -> dict[str, list[tuple[str, str, str]]]:
+    """Return {scoutdns_org_id: [(customer_id, customer_name, profile_filter), ...]}
 
-    Multiple portal customers can share the same ScoutDNS org (e.g. a company
-    split across several customer records). Each will receive its own copy of
-    the synced data.
+    profile_filter is the ScoutDNS profile name that identifies this customer's
+    roaming clients (e.g. "FPC-Users", "Staff"). Empty string means no filtering
+    — all clients for the org are included.
     """
-    org_map: dict[str, list[tuple[str, str]]] = {}
+    org_map: dict[str, list[tuple[str, str, str]]] = {}
     kwargs: dict[str, Any] = {}
     while True:
         resp = customers_table.scan(**kwargs)
@@ -130,8 +130,9 @@ def _load_customer_map(customers_table: Any) -> dict[str, list[tuple[str, str]]]
             org_id: str = item.get("scoutdns_org_id", "")
             cid: str = item.get("customer_id", "")
             name: str = item.get("name", "")
+            profile: str = item.get("scoutdns_profile", "")
             if org_id and cid:
-                org_map.setdefault(org_id, []).append((cid, name))
+                org_map.setdefault(org_id, []).append((cid, name, profile))
         last_key = resp.get("LastEvaluatedKey")
         if not last_key:
             break
@@ -234,7 +235,7 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
         clients: list[dict] = clients_resp.get("data", []) if isinstance(clients_resp, dict) else []
 
         # ── Write a record for every mapped customer ──────────────────────────
-        for customer_id, customer_name in customers_for_org:
+        for customer_id, customer_name, profile_filter in customers_for_org:
             tbl_summary.put_item(Item={
                 "customer_id": customer_id,
                 "customer_name": customer_name,
@@ -267,8 +268,12 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
                 _batch_write(tbl_sites, site_items)
                 sites_written += len(site_items)
 
+            filtered_clients = [
+                c for c in clients
+                if not profile_filter or (c.get("profile", "") or "").lower() == profile_filter.lower()
+            ]
             client_items: list[dict] = []
-            for client in clients:
+            for client in filtered_clients:
                 cid_val = str(client.get("id", ""))
                 if not cid_val:
                     continue
