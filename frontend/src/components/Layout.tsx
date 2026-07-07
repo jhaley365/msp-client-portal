@@ -81,13 +81,6 @@ export default function Layout() {
           </div>
         )}
 
-        <button
-          className="flex h-[38px] w-[38px] flex-none items-center justify-center rounded-[9px] border border-white/[0.12] bg-white/[0.04]"
-          aria-label="Notifications"
-        >
-          <Icon name="notifications" className="text-[19px] text-ink-secondary" />
-        </button>
-
         <div className="relative" ref={userMenuRef}>
           <button
             onClick={() => setUserMenuOpen((v) => !v)}

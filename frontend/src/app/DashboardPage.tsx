@@ -80,17 +80,6 @@ export default function DashboardPage() {
             {activeCustomerName} · Last synced {lastSync}
           </div>
         </div>
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center gap-1.5 rounded-[9px] border border-white/[0.12] bg-white/[0.04] px-3.5 py-2 text-[13px] font-medium text-ink-secondary">
-            <Icon name="calendar_today" className="text-[17px] text-ink-muted" />
-            Last 30 days
-            <Icon name="expand_more" className="text-[18px] text-ink-muted" />
-          </div>
-          <button className="flex items-center gap-1.5 rounded-[9px] bg-accent px-4 py-2.5 text-[13px] font-semibold text-white transition-[filter] hover:brightness-110">
-            <Icon name="download" className="text-[17px]" />
-            Export
-          </button>
-        </div>
       </div>
 
       {/* KPI row */}
