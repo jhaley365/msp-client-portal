@@ -90,6 +90,32 @@ def _batch_write(table: Any, items: list[dict]) -> None:
             table.meta.client.batch_write_item(RequestItems={table.name: unprocessed})
 
 
+def _delete_clients_for_customer(tbl_clients: Any, customer_id: str) -> int:
+    """Delete all existing client records for a customer before re-syncing."""
+    from boto3.dynamodb.conditions import Key as DKey
+    deleted = 0
+    kwargs: dict[str, Any] = {
+        "IndexName": "customer_id-index",
+        "KeyConditionExpression": DKey("customer_id").eq(customer_id),
+        "ProjectionExpression": "client_id",
+    }
+    while True:
+        resp = tbl_clients.query(**kwargs)
+        keys = [{"client_id": item["client_id"]} for item in resp.get("Items", [])]
+        for i in range(0, len(keys), _BATCH_SIZE):
+            chunk = keys[i : i + _BATCH_SIZE]
+            delete_requests = [{"DeleteRequest": {"Key": k}} for k in chunk]
+            tbl_clients.meta.client.batch_write_item(
+                RequestItems={tbl_clients.name: delete_requests}
+            )
+        deleted += len(keys)
+        last_key = resp.get("LastEvaluatedKey")
+        if not last_key:
+            break
+        kwargs["ExclusiveStartKey"] = last_key
+    return deleted
+
+
 def _session() -> requests.Session:
     sess = requests.Session()
     sess.headers.update({
@@ -272,6 +298,7 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
                 c for c in clients
                 if not profile_filter or (c.get("profile", "") or "").lower() == profile_filter.lower()
             ]
+            _delete_clients_for_customer(tbl_clients, customer_id)
             client_items: list[dict] = []
             for client in filtered_clients:
                 cid_val = str(client.get("id", ""))
