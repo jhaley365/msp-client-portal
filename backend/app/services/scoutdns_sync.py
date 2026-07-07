@@ -302,7 +302,7 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
 
             filtered_clients = [
                 c for c in clients
-                if not profile_filter or (c.get("profile", "") or "").lower() == profile_filter.lower()
+                if profile_filter and (c.get("profile", "") or "").lower() == profile_filter.lower()
             ]
             _delete_clients_for_customer(tbl_clients, customer_id)
             client_items: list[dict] = []
