@@ -38,9 +38,8 @@ def create_ticket(body: TicketRequest, user: dict = Depends(get_current_user)) -
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = f"Support Request from {customer_name or customer_id} ({body.email})"
-    msg["From"] = SENDER_EMAIL
+    msg["From"] = body.email
     msg["To"] = SUPPORT_EMAIL
-    msg["Reply-To"] = body.email
 
     text_body = (
         f"Customer: {customer_name} ({customer_id})\n"
