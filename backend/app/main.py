@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.admin import router as admin_router
+from app.api.support import router as support_router
 from app.api.apps import router as apps_router
 from app.api.auth import router as auth_router
 from app.api.huntress import router as huntress_router
@@ -33,6 +34,7 @@ app.include_router(huntress_router, prefix="/api")
 app.include_router(scoutdns_router, prefix="/api")
 app.include_router(o365_router, prefix="/api")
 app.include_router(apps_router, prefix="/api")
+app.include_router(support_router, prefix="/api")
 
 
 @app.get("/api/health")

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuthContext } from '../app/AuthContext'
 import { initials } from '../lib/user'
+import CreateTicketModal from './CreateTicketModal'
 import Icon from './Icon'
 import Logo from './Logo'
 
@@ -20,6 +21,7 @@ export default function Layout() {
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [ticketOpen, setTicketOpen] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -80,6 +82,14 @@ export default function Layout() {
             {activeCustomerName}
           </div>
         )}
+
+        <button
+          onClick={() => setTicketOpen(true)}
+          className="hidden items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-white transition-[filter] hover:brightness-110 sm:flex"
+        >
+          <Icon name="confirmation_number" className="text-[16px]" />
+          Create Ticket
+        </button>
 
         <div className="relative" ref={userMenuRef}>
           <button
@@ -172,6 +182,13 @@ export default function Layout() {
       <main className="flex-1 overflow-y-auto p-6">
         <Outlet />
       </main>
+
+      {ticketOpen && (
+        <CreateTicketModal
+          defaultEmail={user?.email || ''}
+          onClose={() => setTicketOpen(false)}
+        />
+      )}
     </div>
   )
 }
