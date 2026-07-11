@@ -12,7 +12,12 @@ Usage:
 from __future__ import annotations
 
 import os
+import time
+import uuid
+from datetime import datetime, timezone
+
 import boto3
+from boto3.dynamodb.conditions import Key
 
 REGION = os.environ.get("DYNAMODB_REGION", "us-east-1")
 ENDPOINT = os.environ.get("DYNAMODB_ENDPOINT_URL") or None
@@ -25,6 +30,11 @@ def main() -> None:
     dynamo = boto3.resource("dynamodb", **kwargs)
     customers_tbl = dynamo.Table("Customers")
     users_tbl = dynamo.Table("Users")
+
+    # Wait for the Users table to be fully active
+    print("Waiting for Users table to be active…")
+    dynamo.meta.client.get_waiter("table_exists").wait(TableName="Users")
+    print("Users table is ready.")
 
     # Scan all customers
     items: list[dict] = []
@@ -47,7 +57,7 @@ def main() -> None:
         # Check if already migrated
         existing = users_tbl.query(
             IndexName="email-index",
-            KeyConditionExpression=boto3.dynamodb.conditions.Key("email").eq(email),
+            KeyConditionExpression=Key("email").eq(email),
             Limit=1,
         ).get("Items", [])
 
@@ -56,8 +66,6 @@ def main() -> None:
             skipped += 1
             continue
 
-        import uuid
-        from datetime import datetime, timezone
         user_id = str(uuid.uuid4())
         users_tbl.put_item(Item={
             "user_id": user_id,
