@@ -140,7 +140,7 @@ export default function Layout() {
           <NavLink
             key={item.to}
             to={item.to}
-            end={'end' in item ? item.end : false}
+            end={'end' in item ? (item.end as boolean) : false}
             className={({ isActive }) =>
               `-mb-px flex items-center gap-2 border-b-2 px-3.5 text-[13.5px] transition-colors ${
                 isActive
@@ -166,7 +166,7 @@ export default function Layout() {
             <NavLink
               key={item.to}
               to={item.to}
-              end={'end' in item ? item.end : false}
+              end={'end' in item ? (item.end as boolean) : false}
               onClick={() => setMenuOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${
