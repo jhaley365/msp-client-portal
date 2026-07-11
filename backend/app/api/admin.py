@@ -101,9 +101,10 @@ def admin_update_user(
     return result
 
 
-@router.delete("/users/{user_id}", status_code=204)
-def admin_deactivate_user(user_id: str, user: dict = Depends(_require_admin)) -> None:
+@router.delete("/users/{user_id}")
+def admin_deactivate_user(user_id: str, user: dict = Depends(_require_admin)) -> dict:
     target = get_user_by_id(user_id)
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
     update_user(user_id, is_active=False)
+    return {"ok": True}
