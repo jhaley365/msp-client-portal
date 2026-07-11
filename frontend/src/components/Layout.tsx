@@ -16,6 +16,11 @@ const NAV = [
   { to: '/apps', label: 'Apps', icon: 'apps' },
 ]
 
+const ADMIN_NAV = [
+  { to: '/admin/users', label: 'Users', icon: 'manage_accounts' },
+  { to: '/admin/audit', label: 'Audit Log', icon: 'history' },
+]
+
 export default function Layout() {
   const { user, logout, viewAsCustomerId, setViewAsCustomerId, customers, activeCustomerName } = useAuthContext()
   const navigate = useNavigate()
@@ -42,9 +47,10 @@ export default function Layout() {
 
   const handleCustomerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setViewAsCustomerId(e.target.value)
-    // Reload the current page so all data refreshes for the new customer.
     window.location.reload()
   }
+
+  const allNav = user?.is_admin ? [...NAV, ...ADMIN_NAV] : NAV
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-page text-ink-primary">
@@ -130,11 +136,11 @@ export default function Layout() {
 
       {/* Tab nav — desktop */}
       <nav className="hidden h-12 flex-none items-stretch gap-0.5 border-b border-white/[0.07] bg-chrome px-4 sm:flex sm:px-6">
-        {NAV.map((item) => (
+        {allNav.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
-            end={item.end}
+            end={'end' in item ? item.end : false}
             className={({ isActive }) =>
               `-mb-px flex items-center gap-2 border-b-2 px-3.5 text-[13.5px] transition-colors ${
                 isActive
@@ -156,11 +162,11 @@ export default function Layout() {
       {/* Mobile menu */}
       {menuOpen && (
         <nav className="flex flex-col gap-1 border-b border-white/[0.07] bg-chrome px-4 py-2 sm:hidden">
-          {NAV.map((item) => (
+          {allNav.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
-              end={item.end}
+              end={'end' in item ? item.end : false}
               onClick={() => setMenuOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${
