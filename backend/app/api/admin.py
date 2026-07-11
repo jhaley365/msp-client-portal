@@ -108,3 +108,28 @@ def admin_deactivate_user(user_id: str, user: dict = Depends(_require_admin)) ->
         raise HTTPException(status_code=404, detail="User not found")
     update_user(user_id, is_active=False)
     return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Login audit log
+# ---------------------------------------------------------------------------
+
+@router.get("/login-audit")
+def admin_login_audit(user: dict = Depends(_require_admin)) -> list[dict]:
+    """Return all login records, newest first."""
+    kwargs: dict[str, Any] = {"region_name": DYNAMODB_REGION}
+    if DYNAMODB_ENDPOINT_URL:
+        kwargs["endpoint_url"] = DYNAMODB_ENDPOINT_URL
+    tbl = boto3.resource("dynamodb", **kwargs).Table("LoginAudit")
+
+    items: list[dict] = []
+    scan_kwargs: dict[str, Any] = {}
+    while True:
+        resp = tbl.scan(**scan_kwargs)
+        items.extend(resp.get("Items", []))
+        last_key = resp.get("LastEvaluatedKey")
+        if not last_key:
+            break
+        scan_kwargs["ExclusiveStartKey"] = last_key
+
+    return sorted(items, key=lambda x: x.get("logged_in_at", ""), reverse=True)

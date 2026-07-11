@@ -5,10 +5,12 @@ from __future__ import annotations
 import logging
 import os
 import smtplib
+import uuid
 from datetime import datetime, timedelta, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+import boto3
 from fastapi import APIRouter, HTTPException, Request, status
 from jose import JWTError, jwt
 from pydantic import BaseModel, EmailStr
@@ -21,11 +23,37 @@ from app.services.user_service import get_user_by_email
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+DYNAMODB_REGION: str = os.environ.get("DYNAMODB_REGION", "us-east-1")
+_ENDPOINT: str | None = os.environ.get("DYNAMODB_ENDPOINT_URL") or None
+
 SMTP_HOST = "mail.smtp2go.com"
 SMTP_PORT = 25
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "noreply@haley365.com")
 PORTAL_URL = os.environ.get("PORTAL_URL", "https://portal.haley365.com")
 MAGIC_EXPIRE_MINUTES = 15
+
+
+# ---------------------------------------------------------------------------
+# Audit logging
+# ---------------------------------------------------------------------------
+
+def _record_login(user: dict, ip: str) -> None:
+    try:
+        kwargs: dict = {"region_name": DYNAMODB_REGION}
+        if _ENDPOINT:
+            kwargs["endpoint_url"] = _ENDPOINT
+        tbl = boto3.resource("dynamodb", **kwargs).Table("LoginAudit")
+        tbl.put_item(Item={
+            "login_id": str(uuid.uuid4()),
+            "customer_id": user["customer_id"],
+            "user_id": user.get("user_id", ""),
+            "email": user["email"],
+            "name": user.get("name", ""),
+            "ip_address": ip,
+            "logged_in_at": datetime.now(tz=timezone.utc).isoformat(),
+        })
+    except Exception as exc:
+        logger.error("Failed to write login audit record: %s", exc)
 
 
 # ---------------------------------------------------------------------------
@@ -156,7 +184,7 @@ class MagicVerifyRequest(BaseModel):
 
 
 @router.post("/magic-link/verify", response_model=TokenResponse)
-def verify_magic_link(body: MagicVerifyRequest) -> TokenResponse:
+def verify_magic_link(body: MagicVerifyRequest, request: Request) -> TokenResponse:
     """Exchange a magic token for a full session JWT."""
     exc_invalid = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -183,6 +211,8 @@ def verify_magic_link(body: MagicVerifyRequest) -> TokenResponse:
         "name": user.get("name", ""),
         "is_admin": is_admin,
     })
+    ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else "unknown")
+    _record_login(user, ip)
     return TokenResponse(
         access_token=session_token,
         customer_id=user["customer_id"],

@@ -9,6 +9,7 @@ import DnsPage from './DnsPage'
 import O365Page from './O365Page'
 import AppsPage from './AppsPage'
 import AdminUsersPage from './AdminUsersPage'
+import AdminAuditPage from './AdminAuditPage'
 import Layout from '../components/Layout'
 import { AuthProvider, useAuthContext } from './AuthContext'
 
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="o365" element={<O365Page />} />
           <Route path="apps" element={<AppsPage />} />
           <Route path="admin/users" element={<AdminRoute><AdminUsersPage /></AdminRoute>} />
+          <Route path="admin/audit" element={<AdminRoute><AdminAuditPage /></AdminRoute>} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
