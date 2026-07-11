@@ -37,6 +37,7 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     customer_id: str
     name: str
+    email: str = ""
     is_admin: bool = False
 
 
@@ -186,5 +187,6 @@ def verify_magic_link(body: MagicVerifyRequest) -> TokenResponse:
         access_token=session_token,
         customer_id=user["customer_id"],
         name=user.get("name", ""),
+        email=user["email"],
         is_admin=is_admin,
     )

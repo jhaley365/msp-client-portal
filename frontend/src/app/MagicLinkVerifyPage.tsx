@@ -31,7 +31,13 @@ export default function MagicLinkVerifyPage() {
       })
       .then(data => {
         localStorage.setItem('token', data.access_token)
-        // Hard reload so AuthContext re-reads from localStorage
+        // Store user object so AuthContext initialises correctly on reload
+        localStorage.setItem('user', JSON.stringify({
+          customer_id: data.customer_id,
+          name: data.name,
+          email: data.email || '',
+          is_admin: data.is_admin ?? false,
+        }))
         window.location.replace('/')
       })
       .catch(err => {
