@@ -98,31 +98,39 @@ def _resolve_customer(customers_table: Any, client_tag: str, cache: dict) -> str
     return "unassigned"
 
 
-def collect_vaults(region: str, synced_at: str, customers_table: Any, cache: dict) -> list[dict]:
+def collect_vaults(region: str, synced_at: str, customers_table: Any, cache: dict) -> tuple[list[dict], dict[str, str]]:
+    """Returns (vault_items, vault_name_to_customer_id map)."""
     backup = boto3.client("backup", region_name=region)
     try:
         resp = backup.list_backup_vaults()
         vaults = resp.get("BackupVaultList", [])
     except ClientError as exc:
         logger.warning("list_backup_vaults failed in %s: %s", region, exc)
-        return []
+        return [], {}
 
     items: list[dict] = []
+    vault_customer_map: dict[str, str] = {}
+
     for v in vaults:
         vault_arn = v.get("BackupVaultArn", "")
+        vault_name = v.get("BackupVaultName", "")
+
+        # Try Client tag first; fall back to resolving the vault name itself as a customer_id
         try:
             tags_resp = backup.list_tags(ResourceArn=vault_arn)
             tags = tags_resp.get("Tags", {})
         except ClientError:
             tags = {}
 
-        client_tag = tags.get("Client", "")
+        client_tag = tags.get("Client", "") or vault_name
         customer_id = _resolve_customer(customers_table, client_tag, cache)
+        vault_customer_map[vault_name] = customer_id
+
         items.append({
             "vault_arn": vault_arn,
             "customer_id": customer_id,
             "client_tag": client_tag,
-            "vault_name": v.get("BackupVaultName", ""),
+            "vault_name": vault_name,
             "region": region,
             "recovery_points": v.get("NumberOfRecoveryPoints", 0),
             "encryption_key_arn": v.get("EncryptionKeyArn", ""),
@@ -130,10 +138,10 @@ def collect_vaults(region: str, synced_at: str, customers_table: Any, cache: dic
             "last_synced_at": synced_at,
         })
     logger.info("Region %s: collected %d backup vaults", region, len(items))
-    return items
+    return items, vault_customer_map
 
 
-def collect_jobs(region: str, synced_at: str, customers_table: Any, cache: dict) -> list[dict]:
+def collect_jobs(region: str, synced_at: str, vault_customer_map: dict[str, str]) -> list[dict]:
     backup = boto3.client("backup", region_name=region)
     cutoff = (datetime.now(tz=timezone.utc) - timedelta(days=_JOB_DAYS)).isoformat()
     try:
@@ -147,15 +155,13 @@ def collect_jobs(region: str, synced_at: str, customers_table: Any, cache: dict)
 
     items: list[dict] = []
     for j in raw_jobs:
-        # Jobs inherit vault's customer assignment; try tags on resource ARN
-        resource_tags = j.get("RecoveryPointTags") or {}
-        client_tag = resource_tags.get("Client", "")
-        customer_id = _resolve_customer(customers_table, client_tag, cache)
+        vault_name = j.get("BackupVaultName", "")
+        # Resolve customer from the vault → customer map built during vault sync
+        customer_id = vault_customer_map.get(vault_name, "unassigned")
         items.append({
             "backup_job_id": j["BackupJobId"],
             "customer_id": customer_id,
-            "client_tag": client_tag,
-            "vault_name": j.get("BackupVaultName", ""),
+            "vault_name": vault_name,
             "resource_arn": j.get("ResourceArn", ""),
             "resource_type": j.get("ResourceType", ""),
             "state": j.get("State", ""),
@@ -187,13 +193,13 @@ def lambda_handler(event: dict, context: Any) -> dict:
 
     for region in regions:
         try:
-            vaults = collect_vaults(region, synced_at, tbl_customers, cache)
+            vaults, vault_customer_map = collect_vaults(region, synced_at, tbl_customers, cache)
             if vaults:
                 _batch_write(tbl_vaults, vaults)
             totals["vaults"] += len(vaults)
             seen_vault_arns.update(v["vault_arn"] for v in vaults)
 
-            jobs = collect_jobs(region, synced_at, tbl_customers, cache)
+            jobs = collect_jobs(region, synced_at, vault_customer_map)
             if jobs:
                 _batch_write(tbl_jobs, jobs)
             totals["jobs"] += len(jobs)
