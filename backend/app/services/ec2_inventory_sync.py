@@ -122,6 +122,34 @@ def _batch_write(table: Any, items: list[dict]) -> None:
             table.meta.client.batch_write_item(RequestItems={table.name: unprocessed})
 
 
+def _batch_delete(table: Any, pk_name: str, stale_ids: list[str]) -> None:
+    """Delete records from DynamoDB whose primary key is in stale_ids."""
+    for i in range(0, len(stale_ids), _BATCH_SIZE):
+        chunk = stale_ids[i : i + _BATCH_SIZE]
+        requests = [{"DeleteRequest": {"Key": {pk_name: pk}}} for pk in chunk]
+        response = table.meta.client.batch_write_item(
+            RequestItems={table.name: requests}
+        )
+        unprocessed = response.get("UnprocessedItems", {}).get(table.name, [])
+        if unprocessed:
+            table.meta.client.batch_write_item(RequestItems={table.name: unprocessed})
+
+
+def _scan_existing_ids(table: Any, pk_name: str) -> set[str]:
+    """Return the set of all primary key values currently in the table."""
+    ids: set[str] = set()
+    kwargs: dict[str, Any] = {"ProjectionExpression": pk_name}
+    while True:
+        resp = table.scan(**kwargs)
+        for item in resp.get("Items", []):
+            ids.add(item[pk_name])
+        last_key = resp.get("LastEvaluatedKey")
+        if not last_key:
+            break
+        kwargs["ExclusiveStartKey"] = last_key
+    return ids
+
+
 # ---------------------------------------------------------------------------
 # Customer resolution
 # ---------------------------------------------------------------------------
@@ -312,7 +340,13 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
 
     cache = CustomerCache(tbl_customers)
 
-    totals = {"instances": 0, "volumes": 0, "snapshots": 0}
+    totals = {"instances": 0, "volumes": 0, "snapshots": 0, "deleted_instances": 0, "deleted_volumes": 0}
+
+    # Snapshot existing IDs so we can delete records that are no longer in AWS.
+    existing_instance_ids = _scan_existing_ids(tbl_instances, "instance_id")
+    existing_volume_ids = _scan_existing_ids(tbl_volumes, "volume_id")
+    seen_instance_ids: set[str] = set()
+    seen_volume_ids: set[str] = set()
 
     for region in regions:
         try:
@@ -320,11 +354,13 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
             if instances:
                 _batch_write(tbl_instances, instances)
             totals["instances"] += len(instances)
+            seen_instance_ids.update(i["instance_id"] for i in instances)
 
             volumes = collect_volumes(region, synced_at, cache)
             if volumes:
                 _batch_write(tbl_volumes, volumes)
             totals["volumes"] += len(volumes)
+            seen_volume_ids.update(v["volume_id"] for v in volumes)
 
             snapshots = collect_snapshots(region, synced_at, cache)
             if snapshots:
@@ -335,7 +371,20 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
             # Log and continue so a single bad region doesn't abort the sync.
             logger.error("Error processing region %s: %s", region, exc)
 
-    logger.info("Sync complete. Upserted: %s", totals)
+    # Remove stale records that were in DynamoDB but not returned by AWS this run.
+    stale_instances = list(existing_instance_ids - seen_instance_ids)
+    if stale_instances:
+        logger.info("Removing %d stale instance records", len(stale_instances))
+        _batch_delete(tbl_instances, "instance_id", stale_instances)
+        totals["deleted_instances"] = len(stale_instances)
+
+    stale_volumes = list(existing_volume_ids - seen_volume_ids)
+    if stale_volumes:
+        logger.info("Removing %d stale volume records", len(stale_volumes))
+        _batch_delete(tbl_volumes, "volume_id", stale_volumes)
+        totals["deleted_volumes"] = len(stale_volumes)
+
+    logger.info("Sync complete. %s", totals)
     return {
         "statusCode": 200,
         "body": json.dumps({"synced_at": synced_at, "totals": totals}),
