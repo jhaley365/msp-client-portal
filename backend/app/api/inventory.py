@@ -1,4 +1,4 @@
-"""EC2 inventory endpoints — all scoped to the authenticated customer."""
+"""AWS inventory endpoints — EC2, RDS, Backup, FSx, Route 53, all scoped to the authenticated customer."""
 
 from __future__ import annotations
 
@@ -28,6 +28,7 @@ def _query_customer(
     index_name: str,
     customer_id: str,
     last_key: str | None,
+    sort_key_name: str = "last_synced_at",
 ) -> dict[str, Any]:
     tbl = _table(table_name)
     kwargs: dict[str, Any] = {
@@ -37,40 +38,39 @@ def _query_customer(
         "ScanIndexForward": False,
     }
     if last_key:
-        kwargs["ExclusiveStartKey"] = {"customer_id": customer_id, "last_synced_at": last_key}
+        kwargs["ExclusiveStartKey"] = {"customer_id": customer_id, sort_key_name: last_key}
 
     resp = tbl.query(**kwargs)
     return {
         "items": resp.get("Items", []),
-        "next_key": resp.get("LastEvaluatedKey", {}).get("last_synced_at"),
+        "next_key": resp.get("LastEvaluatedKey", {}).get(sort_key_name),
         "count": resp.get("Count", 0),
     }
+
+
+def _count_customer(table_name: str, index_name: str, customer_id: str) -> int:
+    tbl = _table(table_name)
+    resp = tbl.query(
+        IndexName=index_name,
+        KeyConditionExpression=Key("customer_id").eq(customer_id),
+        Select="COUNT",
+    )
+    return resp.get("Count", 0)
 
 
 # ── Summary ──────────────────────────────────────────────────────────────────
 
 @router.get("/summary")
 def summary(user: dict = Depends(get_current_user)) -> dict:
-    """Return counts of instances, volumes and snapshots for the dashboard."""
     customer_id = user["customer_id"]
-
-    def count(table_name: str, index: str) -> int:
-        tbl = _table(table_name)
-        resp = tbl.query(
-            IndexName=index,
-            KeyConditionExpression=Key("customer_id").eq(customer_id),
-            Select="COUNT",
-        )
-        return resp.get("Count", 0)
-
     return {
-        "instances": count("EC2Instances", "customer_id-last_synced_at-index"),
-        "volumes": count("EC2Volumes", "customer_id-last_synced_at-index"),
-        "snapshots": count("EC2Snapshots", "customer_id-start_time-index"),
+        "instances": _count_customer("EC2Instances", "customer_id-last_synced_at-index", customer_id),
+        "volumes": _count_customer("EC2Volumes", "customer_id-last_synced_at-index", customer_id),
+        "snapshots": _count_customer("EC2Snapshots", "customer_id-start_time-index", customer_id),
     }
 
 
-# ── Instances ─────────────────────────────────────────────────────────────────
+# ── EC2 Instances ─────────────────────────────────────────────────────────────
 
 @router.get("/instances")
 def list_instances(
@@ -78,15 +78,9 @@ def list_instances(
     user: dict = Depends(get_current_user),
 ) -> dict:
     result = _query_customer(
-        "EC2Instances",
-        "customer_id-last_synced_at-index",
-        user["customer_id"],
-        last_key,
+        "EC2Instances", "customer_id-last_synced_at-index", user["customer_id"], last_key
     )
-    result["items"] = sorted(
-        result["items"],
-        key=lambda x: (x.get("name_tag") or "").lower(),
-    )
+    result["items"] = sorted(result["items"], key=lambda x: (x.get("name_tag") or "").lower())
     return result
 
 
@@ -98,10 +92,7 @@ def list_volumes(
     user: dict = Depends(get_current_user),
 ) -> dict:
     return _query_customer(
-        "EC2Volumes",
-        "customer_id-last_synced_at-index",
-        user["customer_id"],
-        last_key,
+        "EC2Volumes", "customer_id-last_synced_at-index", user["customer_id"], last_key
     )
 
 
@@ -120,13 +111,96 @@ def list_snapshots(
         "ScanIndexForward": False,
     }
     if last_key:
-        kwargs["ExclusiveStartKey"] = {
-            "customer_id": user["customer_id"],
-            "start_time": last_key,
-        }
+        kwargs["ExclusiveStartKey"] = {"customer_id": user["customer_id"], "start_time": last_key}
     resp = tbl.query(**kwargs)
     return {
         "items": resp.get("Items", []),
         "next_key": resp.get("LastEvaluatedKey", {}).get("start_time"),
         "count": resp.get("Count", 0),
     }
+
+
+# ── RDS Instances ─────────────────────────────────────────────────────────────
+
+@router.get("/rds/instances")
+def list_rds_instances(
+    last_key: str | None = Query(default=None),
+    user: dict = Depends(get_current_user),
+) -> dict:
+    result = _query_customer(
+        "RDSInstances", "customer_id-last_synced_at-index", user["customer_id"], last_key
+    )
+    result["items"] = sorted(result["items"], key=lambda x: (x.get("db_instance_id") or "").lower())
+    return result
+
+
+# ── Aurora Clusters ───────────────────────────────────────────────────────────
+
+@router.get("/rds/clusters")
+def list_rds_clusters(
+    last_key: str | None = Query(default=None),
+    user: dict = Depends(get_current_user),
+) -> dict:
+    result = _query_customer(
+        "RDSClusters", "customer_id-last_synced_at-index", user["customer_id"], last_key
+    )
+    result["items"] = sorted(result["items"], key=lambda x: (x.get("db_cluster_id") or "").lower())
+    return result
+
+
+# ── Backup Vaults ─────────────────────────────────────────────────────────────
+
+@router.get("/backup/vaults")
+def list_backup_vaults(
+    last_key: str | None = Query(default=None),
+    user: dict = Depends(get_current_user),
+) -> dict:
+    result = _query_customer(
+        "BackupVaults", "customer_id-last_synced_at-index", user["customer_id"], last_key
+    )
+    result["items"] = sorted(result["items"], key=lambda x: (x.get("vault_name") or "").lower())
+    return result
+
+
+# ── Backup Jobs ───────────────────────────────────────────────────────────────
+
+@router.get("/backup/jobs")
+def list_backup_jobs(
+    last_key: str | None = Query(default=None),
+    user: dict = Depends(get_current_user),
+) -> dict:
+    return _query_customer(
+        "BackupJobs",
+        "customer_id-creation_date-index",
+        user["customer_id"],
+        last_key,
+        sort_key_name="creation_date",
+    )
+
+
+# ── FSx File Systems ──────────────────────────────────────────────────────────
+
+@router.get("/fsx")
+def list_fsx(
+    last_key: str | None = Query(default=None),
+    user: dict = Depends(get_current_user),
+) -> dict:
+    result = _query_customer(
+        "FSxFileSystems", "customer_id-last_synced_at-index", user["customer_id"], last_key
+    )
+    result["items"] = sorted(result["items"], key=lambda x: (x.get("file_system_id") or "").lower())
+    return result
+
+
+# ── Route 53 Zones ────────────────────────────────────────────────────────────
+
+@router.get("/route53")
+def list_route53(
+    last_key: str | None = Query(default=None),
+    user: dict = Depends(get_current_user),
+) -> dict:
+    result = _query_customer(
+        "Route53Zones", "customer_id-last_synced_at-index", user["customer_id"], last_key
+    )
+    result["items"] = sorted(result["items"], key=lambda x: (x.get("name") or "").lower())
+    return result
