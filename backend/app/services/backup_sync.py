@@ -162,6 +162,7 @@ def collect_jobs(region: str, synced_at: str, vault_customer_map: dict[str, str]
             "backup_job_id": j["BackupJobId"],
             "customer_id": customer_id,
             "vault_name": vault_name,
+            "resource_name": j.get("ResourceName", ""),
             "resource_arn": j.get("ResourceArn", ""),
             "resource_type": j.get("ResourceType", ""),
             "state": j.get("State", ""),

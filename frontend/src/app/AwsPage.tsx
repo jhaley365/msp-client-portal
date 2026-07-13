@@ -33,7 +33,7 @@ interface BackupVault {
   encryption_key_arn: string; creation_date: string
 }
 interface BackupJob {
-  backup_job_id: string; vault_name: string; resource_type: string; state: string
+  backup_job_id: string; vault_name: string; resource_name: string; resource_type: string; state: string
   status_message: string; region: string; backup_size_bytes: number
   creation_date: string; completion_date: string
 }
@@ -172,6 +172,7 @@ export default function AwsPage() {
   const jobColumns: Column<BackupJob>[] = [
     { key: 'backup_job_id', header: 'Job ID', render: (r) => <span className="font-mono text-[11px]">{r.backup_job_id.slice(0, 8)}…</span> },
     { key: 'vault_name', header: 'Vault' },
+    { key: 'resource_name', header: 'Resource Name', render: (r) => r.resource_name || '—' },
     { key: 'resource_type', header: 'Resource Type' },
     { key: 'state', header: 'State', render: (r) => <Badge state={r.state} /> },
     { key: 'region', header: 'Region' },
