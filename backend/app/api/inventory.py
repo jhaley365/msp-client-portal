@@ -192,6 +192,20 @@ def list_fsx(
     return result
 
 
+# ── VPN Connections ───────────────────────────────────────────────────────────
+
+@router.get("/vpn")
+def list_vpn(
+    last_key: str | None = Query(default=None),
+    user: dict = Depends(get_current_user),
+) -> dict:
+    result = _query_customer(
+        "VPNConnections", "customer_id-last_synced_at-index", user["customer_id"], last_key
+    )
+    result["items"] = sorted(result["items"], key=lambda x: (x.get("name") or "").lower())
+    return result
+
+
 # ── Route 53 Zones ────────────────────────────────────────────────────────────
 
 @router.get("/route53")

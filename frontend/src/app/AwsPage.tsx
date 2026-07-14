@@ -3,7 +3,7 @@ import api from '../lib/api'
 import DataTable, { Column } from '../components/DataTable'
 import Badge from '../components/Badge'
 
-type Tab = 'Instances' | 'Volumes' | 'Snapshots' | 'RDS' | 'Aurora' | 'Backup Vaults' | 'Backup Jobs' | 'FSx' | 'Route 53'
+type Tab = 'Instances' | 'Volumes' | 'Snapshots' | 'RDS' | 'Aurora' | 'Backup Vaults' | 'Backup Jobs' | 'FSx' | 'Route 53' | 'VPN'
 
 interface Instance {
   instance_id: string; name_tag: string; instance_type: string; state: string
@@ -45,6 +45,12 @@ interface FsxFs {
 interface Route53Zone {
   zone_id: string; name: string; private_zone: boolean; comment: string
   record_count: number; caller_reference: string
+}
+interface VpnConnection {
+  vpn_id: string; name: string; state: string; type: string; region: string
+  customer_gateway_id: string; vpn_gateway_id: string; routing: string
+  tunnel1_outside_ip: string; tunnel1_status: string; tunnel1_last_change: string
+  tunnel2_outside_ip: string; tunnel2_status: string; tunnel2_last_change: string
 }
 
 function fmtBytes(bytes: number): string {
@@ -101,6 +107,7 @@ export default function AwsPage() {
   const backupJobs = useTabData<BackupJob>(activeTab, 'Backup Jobs', '/inventory/backup/jobs')
   const fsx = useTabData<FsxFs>(activeTab, 'FSx', '/inventory/fsx')
   const route53 = useTabData<Route53Zone>(activeTab, 'Route 53', '/inventory/route53')
+  const vpn = useTabData<VpnConnection>(activeTab, 'VPN', '/inventory/vpn')
 
   const instanceColumns: Column<Instance>[] = [
     { key: 'name_tag', header: 'Name', render: (r) => r.name_tag || <span className="italic text-ink-muted">—</span> },
@@ -192,6 +199,38 @@ export default function AwsPage() {
     { key: 'creation_time', header: 'Created', render: (r) => fmtDate(r.creation_time) },
   ]
 
+  function TunnelStatus({ ip, status, lastChange }: { ip: string; status: string; lastChange: string }) {
+    const up = status.toLowerCase() === 'up'
+    return (
+      <div className="space-y-0.5">
+        <div className="flex items-center gap-1.5">
+          <span className={`inline-block h-2 w-2 rounded-full ${up ? 'bg-tone-ok' : 'bg-tone-crit'}`} />
+          <span className="font-mono text-[12px]">{ip || '—'}</span>
+        </div>
+        {lastChange && <div className="text-[11px] text-ink-faint">{new Date(lastChange).toLocaleString()}</div>}
+      </div>
+    )
+  }
+
+  const vpnColumns: Column<VpnConnection>[] = [
+    { key: 'name', header: 'Name', render: (r) => r.name || <span className="italic text-ink-muted">—</span> },
+    { key: 'vpn_id', header: 'VPN ID' },
+    { key: 'state', header: 'State', render: (r) => <Badge state={r.state} /> },
+    { key: 'routing', header: 'Routing' },
+    { key: 'region', header: 'Region' },
+    { key: 'customer_gateway_id', header: 'Customer GW' },
+    {
+      key: 'tunnel1_status',
+      header: 'Tunnel 1',
+      render: (r) => <TunnelStatus ip={r.tunnel1_outside_ip} status={r.tunnel1_status} lastChange={r.tunnel1_last_change} />,
+    },
+    {
+      key: 'tunnel2_status',
+      header: 'Tunnel 2',
+      render: (r) => <TunnelStatus ip={r.tunnel2_outside_ip} status={r.tunnel2_status} lastChange={r.tunnel2_last_change} />,
+    },
+  ]
+
   const route53Columns: Column<Route53Zone>[] = [
     { key: 'name', header: 'Zone Name' },
     { key: 'zone_id', header: 'Zone ID' },
@@ -200,7 +239,7 @@ export default function AwsPage() {
     { key: 'comment', header: 'Comment', render: (r) => r.comment || '—' },
   ]
 
-  const tabs: Tab[] = ['Instances', 'Volumes', 'Snapshots', 'RDS', 'Aurora', 'Backup Vaults', 'Backup Jobs', 'FSx', 'Route 53']
+  const tabs: Tab[] = ['Instances', 'Volumes', 'Snapshots', 'RDS', 'Aurora', 'Backup Vaults', 'Backup Jobs', 'FSx', 'VPN', 'Route 53']
 
   return (
     <div className="space-y-5">
@@ -250,6 +289,10 @@ export default function AwsPage() {
         {activeTab === 'FSx' && (
           <DataTable<FsxFs> columns={fsxColumns} data={fsx.items} loading={fsx.loading}
             emptyMessage="No FSx file systems found." hasMore={fsx.hasMore} onLoadMore={fsx.loadMore} />
+        )}
+        {activeTab === 'VPN' && (
+          <DataTable<VpnConnection> columns={vpnColumns} data={vpn.items} loading={vpn.loading}
+            emptyMessage="No VPN connections found." hasMore={vpn.hasMore} onLoadMore={vpn.loadMore} />
         )}
         {activeTab === 'Route 53' && (
           <DataTable<Route53Zone> columns={route53Columns} data={route53.items} loading={route53.loading}
