@@ -105,10 +105,7 @@ def _resolve_customer(customers_table: Any, client_tag: str, cache: dict) -> str
 def collect_vpn_connections(region: str, synced_at: str, customers_table: Any, cache: dict) -> list[dict]:
     ec2 = boto3.client("ec2", region_name=region)
     try:
-        paginator = ec2.get_paginator("describe_vpn_connections")
-        raw: list[dict] = []
-        for page in paginator.paginate():
-            raw.extend(page.get("VpnConnections", []))
+        raw = ec2.describe_vpn_connections().get("VpnConnections", [])
     except ClientError as exc:
         logger.warning("describe_vpn_connections failed in %s: %s", region, exc)
         return []
