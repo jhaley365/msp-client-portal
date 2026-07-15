@@ -20,7 +20,7 @@ TABLE_VAULTS = "BackupVaults"
 TABLE_JOBS = "BackupJobs"
 TABLE_CUSTOMERS = "Customers"
 _BATCH_SIZE = 25
-_JOB_DAYS = 90
+_JOB_DAYS = 180
 
 
 def _dynamo_resource() -> Any:

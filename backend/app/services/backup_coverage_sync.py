@@ -35,7 +35,7 @@ SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "noreply@haley365.com")
 ALERT_EMAIL = os.environ.get("ALERT_EMAIL", "support@haley365.com")
 
 # Instances with no backup job within this window are flagged as uncovered.
-LOOKBACK_DAYS = int(os.environ.get("BACKUP_LOOKBACK_DAYS", "7"))
+LOOKBACK_DAYS = int(os.environ.get("BACKUP_LOOKBACK_DAYS", "14"))
 
 # States considered active enough to require a backup.
 ACTIVE_STATES = {"running", "stopped"}
@@ -199,10 +199,16 @@ def lambda_handler(event: dict, context: Any) -> dict:
     )
     logger.info("Found %d active instances to check", len(all_instances))
 
-    # Collect all EC2 backup jobs newer than cutoff
+    # Collect all SUCCESSFUL EC2 backup jobs newer than cutoff.
+    # Failed/aborted jobs do not count as coverage.
+    successful_states = ["COMPLETED", "COMPLETED_WITH_ISSUES"]
     all_jobs = _scan_all(
         tbl_jobs,
-        filter_expr=Attr("resource_type").eq("EC2") & Attr("creation_date").gte(cutoff)
+        filter_expr=(
+            Attr("resource_type").eq("EC2")
+            & Attr("creation_date").gte(cutoff)
+            & Attr("state").is_in(successful_states)
+        )
     )
 
     # Build set of backed-up instance IDs and their most recent job info
