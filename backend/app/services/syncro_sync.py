@@ -85,7 +85,30 @@ def _batch_write(table: Any, items: list[dict]) -> None:
         )
         unprocessed = response.get("UnprocessedItems", {}).get(table.name, [])
         if unprocessed:
-            # Single retry for unprocessed items.
+            table.meta.client.batch_write_item(RequestItems={table.name: unprocessed})
+
+
+def _scan_existing_ids(table: Any, pk_name: str) -> set[str]:
+    ids: set[str] = set()
+    kwargs: dict[str, Any] = {"ProjectionExpression": pk_name}
+    while True:
+        resp = table.scan(**kwargs)
+        for item in resp.get("Items", []):
+            ids.add(item[pk_name])
+        last_key = resp.get("LastEvaluatedKey")
+        if not last_key:
+            break
+        kwargs["ExclusiveStartKey"] = last_key
+    return ids
+
+
+def _batch_delete(table: Any, pk_name: str, stale_ids: list[str]) -> None:
+    for i in range(0, len(stale_ids), _BATCH_SIZE):
+        chunk = stale_ids[i : i + _BATCH_SIZE]
+        requests = [{"DeleteRequest": {"Key": {pk_name: pk}}} for pk in chunk]
+        resp = table.meta.client.batch_write_item(RequestItems={table.name: requests})
+        unprocessed = resp.get("UnprocessedItems", {}).get(table.name, [])
+        if unprocessed:
             table.meta.client.batch_write_item(RequestItems={table.name: unprocessed})
 
 
@@ -236,6 +259,9 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
 
     logger.info("Found %d customer(s) to process", len(customers))
 
+    # Snapshot existing ticket IDs before the sync so we can prune stale ones.
+    existing_ticket_ids = _scan_existing_ids(tbl_tickets, "ticket_id")
+
     # Fetch tickets from Syncro (async) and convert to DynamoDB items.
     dynamo_items = asyncio.run(_sync_all(customers, synced_at))
 
@@ -243,8 +269,15 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
     if dynamo_items:
         _batch_write(tbl_tickets, dynamo_items)
 
-    totals = {"tickets_upserted": len(dynamo_items)}
-    logger.info("Syncro ticket sync complete. Upserted: %s", totals)
+    # Delete tickets that no longer exist in Syncro.
+    seen_ids = {item["ticket_id"] for item in dynamo_items}
+    stale_ids = list(existing_ticket_ids - seen_ids)
+    if stale_ids:
+        logger.info("Deleting %d stale tickets from DynamoDB", len(stale_ids))
+        _batch_delete(tbl_tickets, "ticket_id", stale_ids)
+
+    totals = {"tickets_upserted": len(dynamo_items), "tickets_deleted": len(stale_ids)}
+    logger.info("Syncro ticket sync complete. %s", totals)
 
     return {
         "statusCode": 200,
