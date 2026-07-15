@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import json
 from typing import Any
 
 import boto3
@@ -23,6 +25,16 @@ def _table(name: str) -> Any:
     return boto3.resource("dynamodb", **kwargs).Table(name)
 
 
+def _encode_key(last_evaluated_key: dict) -> str:
+    """Encode the full DynamoDB LastEvaluatedKey as a URL-safe token."""
+    return base64.urlsafe_b64encode(json.dumps(last_evaluated_key).encode()).decode()
+
+
+def _decode_key(token: str) -> dict:
+    """Decode a pagination token back into a DynamoDB ExclusiveStartKey."""
+    return json.loads(base64.urlsafe_b64decode(token.encode()))
+
+
 def _query_customer(
     table_name: str,
     index_name: str,
@@ -38,12 +50,16 @@ def _query_customer(
         "ScanIndexForward": False,
     }
     if last_key:
-        kwargs["ExclusiveStartKey"] = {"customer_id": customer_id, sort_key_name: last_key}
+        try:
+            kwargs["ExclusiveStartKey"] = _decode_key(last_key)
+        except Exception:
+            pass
 
     resp = tbl.query(**kwargs)
+    lek = resp.get("LastEvaluatedKey")
     return {
         "items": resp.get("Items", []),
-        "next_key": resp.get("LastEvaluatedKey", {}).get(sort_key_name),
+        "next_key": _encode_key(lek) if lek else None,
         "count": resp.get("Count", 0),
     }
 
@@ -111,11 +127,15 @@ def list_snapshots(
         "ScanIndexForward": False,
     }
     if last_key:
-        kwargs["ExclusiveStartKey"] = {"customer_id": user["customer_id"], "start_time": last_key}
+        try:
+            kwargs["ExclusiveStartKey"] = _decode_key(last_key)
+        except Exception:
+            pass
     resp = tbl.query(**kwargs)
+    lek = resp.get("LastEvaluatedKey")
     return {
         "items": resp.get("Items", []),
-        "next_key": resp.get("LastEvaluatedKey", {}).get("start_time"),
+        "next_key": _encode_key(lek) if lek else None,
         "count": resp.get("Count", 0),
     }
 
