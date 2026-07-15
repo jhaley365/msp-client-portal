@@ -70,7 +70,7 @@ function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString()
 }
 
-function useTabData<T>(tab: Tab, targetTab: Tab, endpoint: string, sortKey?: string) {
+function useTabData<T>(tab: Tab, targetTab: Tab, endpoint: string, sortKey?: keyof T) {
   const [items, setItems] = useState<T[]>([])
   const [loading, setLoading] = useState(false)
   const [nextKey, setNextKey] = useState<string | null>(null)
@@ -82,7 +82,17 @@ function useTabData<T>(tab: Tab, targetTab: Tab, endpoint: string, sortKey?: str
       const params: Record<string, string> = {}
       if (append && nextKey) params.last_key = nextKey
       const { data } = await api.get(endpoint, { params })
-      setItems((prev) => append ? [...prev, ...data.items] : data.items)
+      setItems((prev) => {
+        const merged = append ? [...prev, ...data.items] : data.items
+        if (sortKey) {
+          merged.sort((a, b) => {
+            const av = ((a[sortKey] as unknown) as string) ?? ''
+            const bv = ((b[sortKey] as unknown) as string) ?? ''
+            return av.toLowerCase().localeCompare(bv.toLowerCase())
+          })
+        }
+        return merged
+      })
       setNextKey(data.next_key ?? null)
       setHasMore(!!data.next_key)
     } catch {
@@ -102,12 +112,12 @@ function useTabData<T>(tab: Tab, targetTab: Tab, endpoint: string, sortKey?: str
 export default function AwsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('Instances')
 
-  const instances = useTabData<Instance>(activeTab, 'Instances', '/inventory/instances')
+  const instances = useTabData<Instance>(activeTab, 'Instances', '/inventory/instances', 'name_tag')
   const volumes = useTabData<Volume>(activeTab, 'Volumes', '/inventory/volumes')
   const snapshots = useTabData<Snapshot>(activeTab, 'Snapshots', '/inventory/snapshots')
-  const rdsInstances = useTabData<RdsInstance>(activeTab, 'RDS', '/inventory/rds/instances')
-  const rdsClusters = useTabData<RdsCluster>(activeTab, 'Aurora', '/inventory/rds/clusters')
-  const backupVaults = useTabData<BackupVault>(activeTab, 'Backup Vaults', '/inventory/backup/vaults')
+  const rdsInstances = useTabData<RdsInstance>(activeTab, 'RDS', '/inventory/rds/instances', 'db_instance_id')
+  const rdsClusters = useTabData<RdsCluster>(activeTab, 'Aurora', '/inventory/rds/clusters', 'db_cluster_id')
+  const backupVaults = useTabData<BackupVault>(activeTab, 'Backup Vaults', '/inventory/backup/vaults', 'vault_name')
   const backupJobs = useTabData<BackupJob>(activeTab, 'Backup Jobs', '/inventory/backup/jobs')
   const [coverage, setCoverage] = useState<CoverageRecord[]>([])
   const [coverageLoading, setCoverageLoading] = useState(false)
@@ -119,9 +129,9 @@ export default function AwsPage() {
       .catch(() => setCoverage([]))
       .finally(() => setCoverageLoading(false))
   }, [activeTab])
-  const fsx = useTabData<FsxFs>(activeTab, 'FSx', '/inventory/fsx')
-  const route53 = useTabData<Route53Zone>(activeTab, 'Route 53', '/inventory/route53')
-  const vpn = useTabData<VpnConnection>(activeTab, 'VPN', '/inventory/vpn')
+  const fsx = useTabData<FsxFs>(activeTab, 'FSx', '/inventory/fsx', 'file_system_id')
+  const route53 = useTabData<Route53Zone>(activeTab, 'Route 53', '/inventory/route53', 'name')
+  const vpn = useTabData<VpnConnection>(activeTab, 'VPN', '/inventory/vpn', 'name')
 
   const instanceColumns: Column<Instance>[] = [
     { key: 'name_tag', header: 'Name', render: (r) => r.name_tag || <span className="italic text-ink-muted">—</span> },
