@@ -192,6 +192,32 @@ def list_fsx(
     return result
 
 
+# ── Backup Coverage ───────────────────────────────────────────────────────────
+
+@router.get("/backup/coverage")
+def list_backup_coverage(
+    user: dict = Depends(get_current_user),
+) -> dict:
+    tbl = _table("BackupCoverage")
+    items: list[Any] = []
+    kwargs: dict[str, Any] = {
+        "IndexName": "customer_id-checked_at-index",
+        "KeyConditionExpression": Key("customer_id").eq(user["customer_id"]),
+        "ScanIndexForward": False,
+        "Limit": 500,
+    }
+    resp = tbl.query(**kwargs)
+    # Deduplicate: keep only the most recent record per instance_id
+    seen: set[str] = set()
+    for item in resp.get("Items", []):
+        iid = item["instance_id"]
+        if iid not in seen:
+            seen.add(iid)
+            items.append(item)
+    items.sort(key=lambda x: (x.get("is_covered", True), (x.get("instance_name") or "").lower()))
+    return {"items": items, "count": len(items)}
+
+
 # ── VPN Connections ───────────────────────────────────────────────────────────
 
 @router.get("/vpn")

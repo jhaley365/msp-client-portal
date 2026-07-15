@@ -3,7 +3,7 @@ import api from '../lib/api'
 import DataTable, { Column } from '../components/DataTable'
 import Badge from '../components/Badge'
 
-type Tab = 'Instances' | 'Volumes' | 'Snapshots' | 'RDS' | 'Aurora' | 'Backup Vaults' | 'Backup Jobs' | 'FSx' | 'Route 53' | 'VPN'
+type Tab = 'Instances' | 'Volumes' | 'Snapshots' | 'RDS' | 'Aurora' | 'Backup Vaults' | 'Backup Jobs' | 'Coverage' | 'FSx' | 'Route 53' | 'VPN'
 
 interface Instance {
   instance_id: string; name_tag: string; instance_type: string; state: string
@@ -45,6 +45,10 @@ interface FsxFs {
 interface Route53Zone {
   zone_id: string; name: string; private_zone: boolean; comment: string
   record_count: number; caller_reference: string
+}
+interface CoverageRecord {
+  instance_id: string; instance_name: string; state: string; region: string
+  is_covered: boolean; last_backup_date: string; first_detected_at: string; checked_at: string
 }
 interface VpnConnection {
   vpn_id: string; name: string; state: string; type: string; region: string
@@ -105,6 +109,16 @@ export default function AwsPage() {
   const rdsClusters = useTabData<RdsCluster>(activeTab, 'Aurora', '/inventory/rds/clusters')
   const backupVaults = useTabData<BackupVault>(activeTab, 'Backup Vaults', '/inventory/backup/vaults')
   const backupJobs = useTabData<BackupJob>(activeTab, 'Backup Jobs', '/inventory/backup/jobs')
+  const [coverage, setCoverage] = useState<CoverageRecord[]>([])
+  const [coverageLoading, setCoverageLoading] = useState(false)
+  useEffect(() => {
+    if (activeTab !== 'Coverage') return
+    setCoverageLoading(true)
+    api.get('/inventory/backup/coverage')
+      .then(({ data }) => setCoverage(data.items))
+      .catch(() => setCoverage([]))
+      .finally(() => setCoverageLoading(false))
+  }, [activeTab])
   const fsx = useTabData<FsxFs>(activeTab, 'FSx', '/inventory/fsx')
   const route53 = useTabData<Route53Zone>(activeTab, 'Route 53', '/inventory/route53')
   const vpn = useTabData<VpnConnection>(activeTab, 'VPN', '/inventory/vpn')
@@ -239,7 +253,32 @@ export default function AwsPage() {
     { key: 'comment', header: 'Comment', render: (r) => r.comment || '—' },
   ]
 
-  const tabs: Tab[] = ['Instances', 'Volumes', 'Snapshots', 'RDS', 'Aurora', 'Backup Vaults', 'Backup Jobs', 'FSx', 'VPN', 'Route 53']
+  const uncoveredCount = coverage.filter(r => !r.is_covered).length
+
+  const coverageColumns: Column<CoverageRecord>[] = [
+    {
+      key: 'instance_name', header: 'Instance',
+      render: (r) => (
+        <div>
+          <div className="font-medium">{r.instance_name || r.instance_id}</div>
+          <div className="font-mono text-[11px] text-ink-muted">{r.instance_id}</div>
+        </div>
+      ),
+    },
+    { key: 'state', header: 'State', render: (r) => <Badge state={r.state} /> },
+    { key: 'region', header: 'Region' },
+    {
+      key: 'is_covered', header: 'Backup Status',
+      render: (r) => r.is_covered
+        ? <span className="inline-flex items-center gap-1.5 rounded-full bg-tone-ok/[0.12] px-2.5 py-0.5 text-[12px] font-semibold text-tone-ok"><span className="h-1.5 w-1.5 rounded-full bg-tone-ok" />Protected</span>
+        : <span className="inline-flex items-center gap-1.5 rounded-full bg-tone-crit/[0.12] px-2.5 py-0.5 text-[12px] font-semibold text-tone-crit"><span className="h-1.5 w-1.5 rounded-full bg-tone-crit" />Not Backed Up</span>,
+    },
+    { key: 'last_backup_date', header: 'Last Backup', render: (r) => r.last_backup_date ? fmtDate(r.last_backup_date) : <span className="text-tone-crit">Never</span> },
+    { key: 'first_detected_at', header: 'Gap Since', render: (r) => r.first_detected_at ? fmtDate(r.first_detected_at) : '—' },
+    { key: 'checked_at', header: 'Last Checked', render: (r) => fmtDate(r.checked_at) },
+  ]
+
+  const tabs: Tab[] = ['Instances', 'Volumes', 'Snapshots', 'RDS', 'Aurora', 'Backup Vaults', 'Backup Jobs', 'Coverage', 'FSx', 'VPN', 'Route 53']
 
   return (
     <div className="space-y-5">
@@ -250,9 +289,14 @@ export default function AwsPage() {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
+            className={`tab-btn ${activeTab === tab ? 'active' : ''} relative`}
           >
             {tab}
+            {tab === 'Coverage' && uncoveredCount > 0 && (
+              <span className="ml-1.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-tone-crit px-1 text-[10px] font-bold text-white">
+                {uncoveredCount}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -281,6 +325,19 @@ export default function AwsPage() {
         {activeTab === 'Backup Vaults' && (
           <DataTable<BackupVault> columns={vaultColumns} data={backupVaults.items} loading={backupVaults.loading}
             emptyMessage="No backup vaults found." hasMore={backupVaults.hasMore} onLoadMore={backupVaults.loadMore} />
+        )}
+        {activeTab === 'Coverage' && (
+          <>
+            {!coverageLoading && coverage.length > 0 && uncoveredCount > 0 && (
+              <div className="mx-4 mt-4 flex items-center gap-3 rounded-lg border border-tone-crit/[0.3] bg-tone-crit/[0.08] px-4 py-3 text-[13px]">
+                <span className="h-2 w-2 rounded-full bg-tone-crit" />
+                <span className="font-semibold text-tone-crit">{uncoveredCount} instance{uncoveredCount !== 1 ? 's' : ''} not covered by AWS Backup</span>
+                <span className="text-ink-muted">— an alert email has been sent</span>
+              </div>
+            )}
+            <DataTable<CoverageRecord> columns={coverageColumns} data={coverage} loading={coverageLoading}
+              emptyMessage="No coverage data yet. Run the backup coverage sync to populate." />
+          </>
         )}
         {activeTab === 'Backup Jobs' && (
           <DataTable<BackupJob> columns={jobColumns} data={backupJobs.items} loading={backupJobs.loading}
