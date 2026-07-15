@@ -278,7 +278,8 @@ export default function AwsPage() {
     { key: 'checked_at', header: 'Last Checked', render: (r) => fmtDate(r.checked_at) },
   ]
 
-  const tabs: Tab[] = ['Instances', 'Volumes', 'Snapshots', 'RDS', 'Aurora', 'Backup Vaults', 'Backup Jobs', 'Coverage', 'FSx', 'VPN', 'Route 53']
+  const isAdmin = !!JSON.parse(localStorage.getItem('user') || '{}')?.is_admin
+  const tabs: Tab[] = ['Instances', 'Volumes', 'Snapshots', 'RDS', 'Aurora', 'Backup Vaults', 'Backup Jobs', ...(isAdmin ? ['Coverage' as Tab] : []), 'FSx', 'VPN', 'Route 53']
 
   return (
     <div className="space-y-5">
