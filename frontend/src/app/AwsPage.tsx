@@ -85,7 +85,7 @@ function useTabData<T>(tab: Tab, targetTab: Tab, endpoint: string, sortKey?: key
       setItems((prev) => {
         const merged = append ? [...prev, ...data.items] : data.items
         if (sortKey) {
-          merged.sort((a, b) => {
+          merged.sort((a: T, b: T) => {
             const av = ((a[sortKey] as unknown) as string) ?? ''
             const bv = ((b[sortKey] as unknown) as string) ?? ''
             return av.toLowerCase().localeCompare(bv.toLowerCase())
