@@ -12,6 +12,7 @@ interface Summary { instances: number; volumes: number; snapshots: number }
 interface SyncroSummary { total: number; open: number; closed: number; in_progress: number }
 interface HuntressSummary { total_agents: number; online_agents: number; open_incidents: number; critical_incidents: number }
 interface ScoutSummary { allowed_requests: number; blocked_requests: number; threat_count: number }
+interface MonitoringSummary { hosts_up: number; hosts_down: number; hosts_unreachable: number; total_hosts: number }
 
 interface Ticket { ticket_id: string; subject: string; status: string; priority: string; created_at: string }
 interface Incident { incident_id: string; summary: string; severity: string; status: string }
@@ -45,6 +46,7 @@ export default function DashboardPage() {
   const [syncro, setSyncro] = useState<SyncroSummary | null>(null)
   const [huntress, setHuntress] = useState<HuntressSummary | null>(null)
   const [scout, setScout] = useState<ScoutSummary | null>(null)
+  const [monitoring, setMonitoring] = useState<MonitoringSummary | null>(null)
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [incidents, setIncidents] = useState<Incident[]>([])
   const [lastSync] = useState(new Date().toLocaleTimeString())
@@ -57,6 +59,7 @@ export default function DashboardPage() {
       api.get('/scoutdns/summary').then((r) => setScout(r.data)),
       api.get('/syncro/tickets').then((r) => setTickets(r.data.items?.slice(0, 5) ?? [])),
       api.get('/huntress/incidents').then((r) => setIncidents(r.data.items?.slice(0, 5) ?? [])),
+      api.get('/monitoring/summary').then((r) => setMonitoring(r.data)),
     ])
   }, [])
 
@@ -83,7 +86,7 @@ export default function DashboardPage() {
       </div>
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <KpiCard
           label="EC2 Instances"
           value={fmt(aws?.instances)}
@@ -111,6 +114,13 @@ export default function DashboardPage() {
           sub={scoutBlockRate !== null ? `${scoutBlockRate}% block rate` : 'Awaiting data feed'}
           icon="block"
           tone={typeof scout?.blocked_requests === 'number' ? 'info' : 'muted'}
+        />
+        <KpiCard
+          label="Device Monitoring"
+          value={monitoring ? (monitoring.hosts_down + monitoring.hosts_unreachable > 0 ? `${monitoring.hosts_down + monitoring.hosts_unreachable} Down` : 'All Up') : '—'}
+          sub={monitoring ? `${monitoring.hosts_up} of ${monitoring.total_hosts} online` : 'Loading…'}
+          icon="monitor_heart"
+          tone={!monitoring ? 'muted' : monitoring.hosts_down + monitoring.hosts_unreachable > 0 ? 'crit' : 'ok'}
         />
       </div>
 
