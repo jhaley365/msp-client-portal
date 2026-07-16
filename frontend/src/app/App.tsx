@@ -8,6 +8,7 @@ import SecurityPage from './SecurityPage'
 import DnsPage from './DnsPage'
 import O365Page from './O365Page'
 import AppsPage from './AppsPage'
+import MonitoringPage from './MonitoringPage'
 import AdminUsersPage from './AdminUsersPage'
 import AdminAuditPage from './AdminAuditPage'
 import Layout from '../components/Layout'
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="dns" element={<DnsPage />} />
           <Route path="o365" element={<O365Page />} />
           <Route path="apps" element={<AppsPage />} />
+          <Route path="monitoring" element={<MonitoringPage />} />
           <Route path="admin/users" element={<AdminRoute><AdminUsersPage /></AdminRoute>} />
           <Route path="admin/audit" element={<AdminRoute><AdminAuditPage /></AdminRoute>} />
         </Route>
