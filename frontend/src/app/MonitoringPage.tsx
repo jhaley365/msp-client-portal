@@ -3,7 +3,6 @@ import api from '../lib/api'
 import KpiCard from '../components/KpiCard'
 import DataTable, { Column } from '../components/DataTable'
 import Badge from '../components/Badge'
-import type { Tone } from '../lib/tone'
 
 interface MonitoringSummary {
   hosts_up: number
@@ -72,7 +71,7 @@ const HOST_COLUMNS: Column<Host>[] = [
   {
     key: 'status',
     header: 'Status',
-    render: (h) => <Badge label={h.status} tone={toneForHostStatus(h.status)} />,
+    render: (h) => <Badge state={h.status} />,
   },
   {
     key: 'groups',
@@ -103,7 +102,7 @@ const PROBLEM_COLUMNS: Column<ServiceProblem>[] = [
   {
     key: 'status',
     header: 'Status',
-    render: (s) => <Badge label={s.status} tone={toneForServiceStatus(s.status)} />,
+    render: (s) => <Badge state={s.status} />,
   },
   {
     key: 'plugin_output',

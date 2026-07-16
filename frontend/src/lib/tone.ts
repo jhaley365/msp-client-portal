@@ -46,6 +46,15 @@ const STATE_TONES: Record<string, Tone> = {
   high: 'purple',
   medium: 'warn',
   low: 'muted',
+  // checkmk host status
+  up: 'ok',
+  down: 'crit',
+  unreachable: 'warn',
+  // checkmk service status
+  ok: 'ok',
+  warn: 'warn',
+  crit: 'crit',
+  unknown: 'muted',
   // fallback
   abandoned: 'muted',
 }
