@@ -261,13 +261,25 @@ def lambda_handler(event: dict, context: Any) -> dict:
     if coverage_items:
         _batch_write(tbl_coverage, coverage_items)
 
+    # Remove coverage records for instances that no longer exist in EC2Instances
+    active_instance_ids = {inst["instance_id"] for inst in all_instances}
+    stale_coverage_ids = [
+        iid for iid in existing_coverage if iid not in active_instance_ids
+    ]
+    if stale_coverage_ids:
+        logger.info("Deleting %d stale coverage records", len(stale_coverage_ids))
+        for i in range(0, len(stale_coverage_ids), _BATCH_SIZE):
+            chunk = stale_coverage_ids[i: i + _BATCH_SIZE]
+            requests = [{"DeleteRequest": {"Key": {"instance_id": iid}}} for iid in chunk]
+            tbl_coverage.meta.client.batch_write_item(RequestItems={tbl_coverage.name: requests})
+
     covered_count = sum(1 for r in coverage_items if r["is_covered"])
     uncovered_count = len(coverage_items) - covered_count
     new_gap_count = sum(len(v) for v in new_gaps.values())
 
     logger.info(
-        "Coverage check complete: %d covered, %d uncovered, %d new gaps",
-        covered_count, uncovered_count, new_gap_count,
+        "Coverage check complete: %d covered, %d uncovered, %d new gaps, %d stale deleted",
+        covered_count, uncovered_count, new_gap_count, len(stale_coverage_ids),
     )
 
     if new_gaps:
@@ -283,6 +295,7 @@ def lambda_handler(event: dict, context: Any) -> dict:
                 "covered": covered_count,
                 "uncovered": uncovered_count,
                 "new_gaps_alerted": new_gap_count,
+                "stale_deleted": len(stale_coverage_ids),
             },
         }),
     }
