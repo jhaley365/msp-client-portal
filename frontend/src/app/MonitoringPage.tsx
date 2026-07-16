@@ -33,25 +33,6 @@ interface ServiceProblem {
   plugin_output: string
 }
 
-function toneForHostStatus(status: string): Tone {
-  switch (status) {
-    case 'Up': return 'ok'
-    case 'Down': return 'crit'
-    case 'Unreachable': return 'warn'
-    case 'Pending': return 'muted'
-    default: return 'muted'
-  }
-}
-
-function toneForServiceStatus(status: string): Tone {
-  switch (status) {
-    case 'Ok': return 'ok'
-    case 'Crit': return 'crit'
-    case 'Warn': return 'warn'
-    case 'Unknown': return 'muted'
-    default: return 'muted'
-  }
-}
 
 const HOST_COLUMNS: Column<Host>[] = [
   {
