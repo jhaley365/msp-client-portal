@@ -54,7 +54,7 @@ export default function DashboardPage() {
   useEffect(() => {
     Promise.allSettled([
       api.get('/inventory/summary').then((r) => setAws(r.data)),
-      api.get('/syncro/summary').then((r) => setSyncro(r.data)),
+      api.get(user?.is_admin ? '/syncro/admin/summary' : '/syncro/summary').then((r) => setSyncro(r.data)),
       api.get('/huntress/summary').then((r) => setHuntress(r.data)),
       api.get('/scoutdns/summary').then((r) => setScout(r.data)),
       api.get('/syncro/tickets').then((r) => setTickets(r.data.items?.slice(0, 5) ?? [])),

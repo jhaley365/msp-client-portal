@@ -6,7 +6,8 @@ from typing import Any
 
 import boto3
 from boto3.dynamodb.conditions import Key
-from fastapi import APIRouter, Depends, Query
+from boto3.dynamodb.conditions import Attr
+from fastapi import APIRouter, Depends, HTTPException, Query, status as http_status
 
 from app.core.config import DYNAMODB_ENDPOINT_URL, DYNAMODB_REGION
 from app.core.dependencies import get_current_user
@@ -111,7 +112,6 @@ def list_tickets(
         )
 
     if open_filter:
-        from boto3.dynamodb.conditions import Attr
         kwargs["FilterExpression"] = Attr("status").ne("Resolved")
 
     if last_key:
@@ -140,4 +140,45 @@ def list_tickets(
         "items": resp.get("Items", []),
         "next_key": next_key,
         "count": resp.get("Count", 0),
+    }
+
+
+# ── Admin: all-customer summary ───────────────────────────────────────────────
+
+OPEN_STATUSES = {
+    "New", "In Progress", "Waiting on Customer", "Waiting for Parts",
+    "Scheduled", "Customer Reply", "Escalated to MSP", "Abandoned",
+}
+RESOLVED_STATUSES = {"Resolved", "Closed", "Cancelled"}
+
+
+def _require_admin(user: dict = Depends(get_current_user)) -> dict:
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return user
+
+
+@router.get("/admin/summary")
+def admin_summary(user: dict = Depends(_require_admin)) -> dict:
+    """Return ticket counts across all customers for admin users."""
+    tbl = _table(TABLE_SYNCRO_TICKETS)
+    items: list[dict] = []
+    kwargs: dict[str, Any] = {"ProjectionExpression": "#s", "ExpressionAttributeNames": {"#s": "status"}}
+    while True:
+        resp = tbl.scan(**kwargs)
+        items.extend(resp.get("Items", []))
+        lek = resp.get("LastEvaluatedKey")
+        if not lek:
+            break
+        kwargs["ExclusiveStartKey"] = lek
+
+    open_count = sum(1 for i in items if i.get("status") in OPEN_STATUSES)
+    closed_count = sum(1 for i in items if i.get("status") in RESOLVED_STATUSES)
+    in_progress = sum(1 for i in items if i.get("status") == "In Progress")
+
+    return {
+        "total": len(items),
+        "open": open_count,
+        "closed": closed_count,
+        "in_progress": in_progress,
     }
