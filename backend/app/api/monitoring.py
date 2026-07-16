@@ -125,7 +125,7 @@ def hosts(
     customer_id: str = user["customer_id"]
     result = _query_customer_paged(TABLE_HOSTS, customer_id, next_key)
     # Sort by host_name client-side within the page
-    result["items"] = sorted(result["items"], key=lambda h: h.get("host_name", "").lower())
+    result["items"] = sorted(result["items"], key=lambda h: (h.get("alias") or h.get("host_name", "")).lower())
     return result
 
 

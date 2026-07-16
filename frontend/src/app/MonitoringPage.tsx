@@ -112,7 +112,11 @@ export default function MonitoringPage() {
       api.get('/monitoring/problems'),
     ]).then(([sum, hst, prb]) => {
       if (sum.status === 'fulfilled') setSummary(sum.value.data)
-      if (hst.status === 'fulfilled') setHosts(hst.value.data?.items ?? [])
+      if (hst.status === 'fulfilled') {
+        const items: Host[] = hst.value.data?.items ?? []
+        items.sort((a, b) => (a.alias || a.host_name).toLowerCase().localeCompare((b.alias || b.host_name).toLowerCase()))
+        setHosts(items)
+      }
       if (prb.status === 'fulfilled') setProblems(prb.value.data?.items ?? [])
     }).finally(() => setLoading(false))
   }, [])
