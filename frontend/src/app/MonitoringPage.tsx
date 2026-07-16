@@ -39,7 +39,12 @@ const HOST_COLUMNS: Column<Host>[] = [
     key: 'host_name',
     header: 'Name',
     render: (h) => (
-      <span className="font-mono text-[13px] text-ink-primary">{h.host_name}</span>
+      <div>
+        <div className="text-[13px] text-ink-primary">{h.alias || h.host_name}</div>
+        {h.alias && h.alias !== h.host_name && (
+          <div className="font-mono text-[11px] text-ink-muted">{h.host_name}</div>
+        )}
+      </div>
     ),
   },
   {
@@ -70,7 +75,7 @@ const PROBLEM_COLUMNS: Column<ServiceProblem>[] = [
     key: 'host_name',
     header: 'Host',
     render: (s) => (
-      <span className="font-mono text-[13px] text-ink-primary">{s.host_name}</span>
+      <span className="text-[13px] text-ink-primary">{s.host_name}</span>
     ),
   },
   {
