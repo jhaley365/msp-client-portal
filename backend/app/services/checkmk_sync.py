@@ -47,13 +47,13 @@ CHECKMK_BASE_URL: str = os.environ.get("CHECKMK_BASE_URL", "http://xg.checkmk.ha
 CHECKMK_SITE: str = os.environ.get("CHECKMK_SITE", "XG")
 CHECKMK_USERNAME: str = os.environ.get("CHECKMK_USERNAME", "")
 CHECKMK_PASSWORD: str = os.environ.get("CHECKMK_PASSWORD", "")
-CHECKMK_CUSTOMER_ID: str = os.environ.get("CHECKMK_CUSTOMER_ID", "FPC")
 
 DYNAMODB_REGION: str = os.environ.get("DYNAMODB_REGION", "us-east-1")
 _ENDPOINT: str | None = os.environ.get("DYNAMODB_ENDPOINT_URL") or None
 
 TABLE_HOSTS = "CheckMKHosts"
 TABLE_SERVICES = "CheckMKServices"
+TABLE_CUSTOMERS = "Customers"
 
 _BATCH_SIZE = 25
 
@@ -129,6 +129,36 @@ def _scan_existing_ids(table: Any, pk_name: str) -> set[str]:
             break
         kwargs["ExclusiveStartKey"] = last_key
     return ids
+
+
+def _resolve_customer(customers_table: Any, group: str, cache: dict) -> str:
+    """Resolve a CheckMK host group name to a customer_id via the Customers table."""
+    if group in cache:
+        return cache[group]
+    if not group:
+        cache[group] = "unassigned"
+        return "unassigned"
+    try:
+        from botocore.exceptions import ClientError as _ClientError
+        resp = customers_table.get_item(Key={"customer_id": group})
+        item = resp.get("Item")
+        if item:
+            cid = item.get("resolves_to") or group
+            cache[group] = cid
+            return cid
+    except Exception:
+        pass
+    cache[group] = "unassigned"
+    return "unassigned"
+
+
+def _customer_for_host(groups: list, customers_table: Any, cache: dict) -> str:
+    """Return the first group that resolves to a known customer, else 'unassigned'."""
+    for g in groups:
+        cid = _resolve_customer(customers_table, g, cache)
+        if cid != "unassigned":
+            return cid
+    return "unassigned"
 
 
 def _checkmk_session() -> requests.Session:
@@ -233,8 +263,10 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
     dynamo = _dynamo_resource()
     tbl_hosts = dynamo.Table(TABLE_HOSTS)
     tbl_services = dynamo.Table(TABLE_SERVICES)
+    tbl_customers = dynamo.Table(TABLE_CUSTOMERS)
 
     session = _checkmk_session()
+    customer_cache: dict = {}
 
     # ── Hosts ─────────────────────────────────────────────────────────────────
 
@@ -244,6 +276,8 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
 
     host_items: list[dict] = []
     seen_host_ids: set[str] = set()
+    # Build host_name → customer_id map for service tagging
+    host_customer_map: dict[str, str] = {}
 
     for entry in raw_hosts:
         ext = entry.get("extensions", {})
@@ -260,9 +294,12 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
         if isinstance(groups, str):
             groups = [groups]
 
+        customer_id = _customer_for_host(groups, tbl_customers, customer_cache)
+        host_customer_map[host_name] = customer_id
+
         item: dict[str, Any] = {
             "host_name": host_name,
-            "customer_id": CHECKMK_CUSTOMER_ID,
+            "customer_id": customer_id,
             "alias": ext.get("alias", ""),
             "ip_address": ext.get("address", ""),
             "status": status,
@@ -307,7 +344,7 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
 
         item = {
             "service_key": service_key,
-            "customer_id": CHECKMK_CUSTOMER_ID,
+            "customer_id": host_customer_map.get(host_name, "unassigned"),
             "host_name": host_name,
             "service_description": service_description,
             "status": status,
