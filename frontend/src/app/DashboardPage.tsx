@@ -59,7 +59,7 @@ export default function DashboardPage() {
       api.get('/scoutdns/summary').then((r) => setScout(r.data)),
       api.get('/syncro/tickets').then((r) => setTickets(r.data.items?.slice(0, 5) ?? [])),
       api.get('/huntress/incidents').then((r) => setIncidents(r.data.items?.slice(0, 5) ?? [])),
-      api.get('/monitoring/summary').then((r) => setMonitoring(r.data)),
+      api.get(user?.is_admin ? '/monitoring/admin/summary' : '/monitoring/summary').then((r) => setMonitoring(r.data)),
     ])
   }, [])
 

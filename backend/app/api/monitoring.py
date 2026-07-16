@@ -8,7 +8,7 @@ from typing import Any
 
 import boto3
 from boto3.dynamodb.conditions import Key
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.core.config import DYNAMODB_ENDPOINT_URL, DYNAMODB_REGION
 from app.core.dependencies import get_current_user
@@ -134,6 +134,21 @@ def hosts(
 _PROBLEM_STATE_ORDER = {"Crit": 0, "Down": 1, "Unreachable": 2, "Warn": 3, "Unknown": 4}
 
 
+def _scan_all(table_name: str) -> list[dict]:
+    """Return every item in the table (admin use only)."""
+    tbl = _table(table_name)
+    items: list[dict] = []
+    kwargs: dict[str, Any] = {}
+    while True:
+        resp = tbl.scan(**kwargs)
+        items.extend(resp.get("Items", []))
+        lek = resp.get("LastEvaluatedKey")
+        if not lek:
+            break
+        kwargs["ExclusiveStartKey"] = lek
+    return items
+
+
 @router.get("/problems")
 def problems(user: dict = Depends(get_current_user)) -> dict:
     customer_id: str = user["customer_id"]
@@ -150,4 +165,53 @@ def problems(user: dict = Depends(get_current_user)) -> dict:
         )
     )
 
+    return {"items": non_ok, "count": len(non_ok)}
+
+
+# ── Admin: all-customer views ──────────────────────────────────────────────────
+
+def _require_admin(user: dict = Depends(get_current_user)) -> dict:
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return user
+
+
+@router.get("/admin/summary")
+def admin_summary(user: dict = Depends(_require_admin)) -> dict:
+    hosts = _scan_all(TABLE_HOSTS)
+    # Exclude unassigned
+    hosts = [h for h in hosts if h.get("customer_id") != "unassigned"]
+    services = _scan_all(TABLE_SERVICES)
+    services = [s for s in services if s.get("customer_id") != "unassigned"]
+
+    return {
+        "hosts_up": sum(1 for h in hosts if h.get("status") == "Up"),
+        "hosts_down": sum(1 for h in hosts if h.get("status") == "Down"),
+        "hosts_unreachable": sum(1 for h in hosts if h.get("status") == "Unreachable"),
+        "hosts_pending": sum(1 for h in hosts if h.get("status") == "Pending"),
+        "services_warn": sum(1 for s in services if s.get("status") == "Warn"),
+        "services_crit": sum(1 for s in services if s.get("status") == "Crit"),
+        "services_unknown": sum(1 for s in services if s.get("status") == "Unknown"),
+        "total_hosts": len(hosts),
+        "total_services": len(services),
+    }
+
+
+@router.get("/admin/hosts")
+def admin_hosts(user: dict = Depends(_require_admin)) -> dict:
+    hosts = _scan_all(TABLE_HOSTS)
+    hosts = [h for h in hosts if h.get("customer_id") != "unassigned"]
+    hosts.sort(key=lambda h: (h.get("customer_id", ""), (h.get("alias") or h.get("host_name", "")).lower()))
+    return {"items": hosts, "count": len(hosts)}
+
+
+@router.get("/admin/problems")
+def admin_problems(user: dict = Depends(_require_admin)) -> dict:
+    services = _scan_all(TABLE_SERVICES)
+    non_ok = [s for s in services if s.get("status") != "Ok" and s.get("customer_id") != "unassigned"]
+    non_ok.sort(key=lambda s: (
+        _PROBLEM_STATE_ORDER.get(s.get("status", ""), 99),
+        s.get("customer_id", ""),
+        s.get("host_name", "").lower(),
+    ))
     return {"items": non_ok, "count": len(non_ok)}

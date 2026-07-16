@@ -3,6 +3,7 @@ import api from '../lib/api'
 import KpiCard from '../components/KpiCard'
 import DataTable, { Column } from '../components/DataTable'
 import Badge from '../components/Badge'
+import { useAuthContext } from './AuthContext'
 
 interface MonitoringSummary {
   hosts_up: number
@@ -22,6 +23,7 @@ interface Host {
   ip_address: string
   status: string
   groups: string[]
+  customer_id: string
   last_synced_at: string
 }
 
@@ -60,12 +62,10 @@ const HOST_COLUMNS: Column<Host>[] = [
     render: (h) => <Badge state={h.status} />,
   },
   {
-    key: 'groups',
-    header: 'Groups',
+    key: 'customer_id',
+    header: 'Customer',
     render: (h) => (
-      <span className="text-[13px] text-ink-secondary">
-        {Array.isArray(h.groups) && h.groups.length > 0 ? h.groups.join(', ') : '—'}
-      </span>
+      <span className="text-[13px] text-ink-secondary">{h.customer_id || '—'}</span>
     ),
   },
 ]
@@ -100,26 +100,29 @@ const PROBLEM_COLUMNS: Column<ServiceProblem>[] = [
 ]
 
 export default function MonitoringPage() {
+  const { user } = useAuthContext()
+  const isAdmin = !!user?.is_admin
   const [summary, setSummary] = useState<MonitoringSummary | null>(null)
   const [hosts, setHosts] = useState<Host[]>([])
   const [problems, setProblems] = useState<ServiceProblem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    const prefix = isAdmin ? '/monitoring/admin' : '/monitoring'
     Promise.allSettled([
-      api.get('/monitoring/summary'),
-      api.get('/monitoring/hosts'),
-      api.get('/monitoring/problems'),
+      api.get(`${prefix}/summary`),
+      api.get(`${prefix}/hosts`),
+      api.get(`${prefix}/problems`),
     ]).then(([sum, hst, prb]) => {
       if (sum.status === 'fulfilled') setSummary(sum.value.data)
       if (hst.status === 'fulfilled') {
         const items: Host[] = hst.value.data?.items ?? []
-        items.sort((a, b) => (a.alias || a.host_name).toLowerCase().localeCompare((b.alias || b.host_name).toLowerCase()))
+        if (!isAdmin) items.sort((a, b) => (a.alias || a.host_name).toLowerCase().localeCompare((b.alias || b.host_name).toLowerCase()))
         setHosts(items)
       }
       if (prb.status === 'fulfilled') setProblems(prb.value.data?.items ?? [])
     }).finally(() => setLoading(false))
-  }, [])
+  }, [isAdmin])
 
   const s = summary
 
