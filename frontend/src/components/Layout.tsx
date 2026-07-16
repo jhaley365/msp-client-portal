@@ -14,6 +14,7 @@ const NAV = [
   { to: '/dns', label: 'ScoutDNS', icon: 'dns' },
   { to: '/o365', label: 'Office 365', icon: 'mail' },
   { to: '/apps', label: 'Apps', icon: 'apps' },
+  { to: '/monitoring', label: 'Monitoring', icon: 'monitor_heart' },
 ]
 
 const ADMIN_NAV = [
