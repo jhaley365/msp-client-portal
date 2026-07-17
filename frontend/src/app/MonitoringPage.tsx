@@ -102,8 +102,9 @@ const PROBLEM_COLUMNS: Column<ServiceProblem>[] = [
 export default function MonitoringPage() {
   const { user, viewAsCustomerId } = useAuthContext()
   const isAdmin = !!user?.is_admin
-  // Use admin (all-customer) endpoints only when admin has no specific customer selected
-  const useAdminEndpoints = isAdmin && !viewAsCustomerId
+  // Use admin (all-customer) endpoints only when admin is viewing their own org (XG = global view)
+  const viewingOwnOrg = !viewAsCustomerId || viewAsCustomerId === user?.customer_id
+  const useAdminEndpoints = isAdmin && viewingOwnOrg
   const [summary, setSummary] = useState<MonitoringSummary | null>(null)
   const [hosts, setHosts] = useState<Host[]>([])
   const [problems, setProblems] = useState<ServiceProblem[]>([])

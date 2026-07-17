@@ -51,7 +51,8 @@ export default function DashboardPage() {
   const [incidents, setIncidents] = useState<Incident[]>([])
   const [lastSync] = useState(new Date().toLocaleTimeString())
 
-  const useAdminEndpoints = !!user?.is_admin && !viewAsCustomerId
+  const viewingOwnOrg = !viewAsCustomerId || viewAsCustomerId === user?.customer_id
+  const useAdminEndpoints = !!user?.is_admin && viewingOwnOrg
 
   useEffect(() => {
     Promise.allSettled([
