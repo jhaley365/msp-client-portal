@@ -41,7 +41,7 @@ function StatGrid({ stats }: { stats: { value: string | number; label: string; t
 }
 
 export default function DashboardPage() {
-  const { user, activeCustomerName } = useAuthContext()
+  const { user, activeCustomerName, viewAsCustomerId } = useAuthContext()
   const [aws, setAws] = useState<Summary | null>(null)
   const [syncro, setSyncro] = useState<SyncroSummary | null>(null)
   const [huntress, setHuntress] = useState<HuntressSummary | null>(null)
@@ -51,17 +51,19 @@ export default function DashboardPage() {
   const [incidents, setIncidents] = useState<Incident[]>([])
   const [lastSync] = useState(new Date().toLocaleTimeString())
 
+  const useAdminEndpoints = !!user?.is_admin && !viewAsCustomerId
+
   useEffect(() => {
     Promise.allSettled([
       api.get('/inventory/summary').then((r) => setAws(r.data)),
-      api.get(user?.is_admin ? '/syncro/admin/summary' : '/syncro/summary').then((r) => setSyncro(r.data)),
+      api.get(useAdminEndpoints ? '/syncro/admin/summary' : '/syncro/summary').then((r) => setSyncro(r.data)),
       api.get('/huntress/summary').then((r) => setHuntress(r.data)),
       api.get('/scoutdns/summary').then((r) => setScout(r.data)),
       api.get('/syncro/tickets').then((r) => setTickets(r.data.items?.slice(0, 5) ?? [])),
       api.get('/huntress/incidents').then((r) => setIncidents(r.data.items?.slice(0, 5) ?? [])),
-      api.get(user?.is_admin ? '/monitoring/admin/summary' : '/monitoring/summary').then((r) => setMonitoring(r.data)),
+      api.get(useAdminEndpoints ? '/monitoring/admin/summary' : '/monitoring/summary').then((r) => setMonitoring(r.data)),
     ])
-  }, [])
+  }, [useAdminEndpoints])
 
   const fmt = (n: number | undefined) => (n !== undefined ? n.toLocaleString() : '—')
 

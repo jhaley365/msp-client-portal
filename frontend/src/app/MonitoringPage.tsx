@@ -100,15 +100,17 @@ const PROBLEM_COLUMNS: Column<ServiceProblem>[] = [
 ]
 
 export default function MonitoringPage() {
-  const { user } = useAuthContext()
+  const { user, viewAsCustomerId } = useAuthContext()
   const isAdmin = !!user?.is_admin
+  // Use admin (all-customer) endpoints only when admin has no specific customer selected
+  const useAdminEndpoints = isAdmin && !viewAsCustomerId
   const [summary, setSummary] = useState<MonitoringSummary | null>(null)
   const [hosts, setHosts] = useState<Host[]>([])
   const [problems, setProblems] = useState<ServiceProblem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const prefix = isAdmin ? '/monitoring/admin' : '/monitoring'
+    const prefix = useAdminEndpoints ? '/monitoring/admin' : '/monitoring'
     Promise.allSettled([
       api.get(`${prefix}/summary`),
       api.get(`${prefix}/hosts`),
@@ -117,12 +119,12 @@ export default function MonitoringPage() {
       if (sum.status === 'fulfilled') setSummary(sum.value.data)
       if (hst.status === 'fulfilled') {
         const items: Host[] = hst.value.data?.items ?? []
-        if (!isAdmin) items.sort((a, b) => (a.alias || a.host_name).toLowerCase().localeCompare((b.alias || b.host_name).toLowerCase()))
+        if (!useAdminEndpoints) items.sort((a, b) => (a.alias || a.host_name).toLowerCase().localeCompare((b.alias || b.host_name).toLowerCase()))
         setHosts(items)
       }
       if (prb.status === 'fulfilled') setProblems(prb.value.data?.items ?? [])
     }).finally(() => setLoading(false))
-  }, [isAdmin])
+  }, [useAdminEndpoints])
 
   const s = summary
 
@@ -169,7 +171,7 @@ export default function MonitoringPage() {
           ) : null}
         </h2>
         <DataTable<Host>
-          columns={HOST_COLUMNS}
+          columns={useAdminEndpoints ? HOST_COLUMNS : HOST_COLUMNS.filter(c => c.key !== 'customer_id')}
           data={hosts}
           keyField="host_name"
           loading={loading}
