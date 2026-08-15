@@ -123,7 +123,7 @@ export default function Layout() {
               </div>
               <button
                 onClick={handleLogout}
-                className="flex w-full items-center gap-2 px-3.5 py-2 text-left text-sm font-medium text-ink-secondary hover:bg-white/[0.06] hover:text-white"
+                className="flex w-full items-center gap-2 px-3.5 py-2 text-left text-sm font-medium text-ink-secondary hover:bg-white/[0.06] hover:text-ink-primary"
               >
                 <Icon name="logout" className="text-[17px]" />
                 Sign out
@@ -156,7 +156,7 @@ export default function Layout() {
               `-mb-px flex items-center gap-2 border-b-2 px-3.5 text-[13.5px] transition-colors ${
                 isActive
                   ? 'border-accent font-bold text-ink-primary'
-                  : 'border-transparent font-medium text-ink-muted hover:text-white'
+                  : 'border-transparent font-medium text-ink-muted hover:text-ink-primary'
               }`
             }
           >
