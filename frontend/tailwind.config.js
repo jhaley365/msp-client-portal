@@ -1,6 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
@@ -12,17 +13,17 @@ export default {
           700: '#1d4ed8',
           900: '#1e3a8a',
         },
-        page: '#0c111e',
-        chrome: '#0a0f1a',
-        panel: '#0e1424',
+        page: 'var(--color-page)',
+        chrome: 'var(--color-chrome)',
+        panel: 'var(--color-panel)',
         accent: '#2f6bff',
         'brand-light': '#60a5fa',
         'icon-blue': '#7cb0ff',
         ink: {
-          primary: '#eaf0fb',
-          secondary: '#c4cede',
-          muted: '#8a97ab',
-          faint: '#7f8ea3',
+          primary: 'var(--color-ink-primary)',
+          secondary: 'var(--color-ink-secondary)',
+          muted: 'var(--color-ink-muted)',
+          faint: 'var(--color-ink-faint)',
         },
         tone: {
           ok: '#4ade80',

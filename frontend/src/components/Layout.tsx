@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuthContext } from '../app/AuthContext'
 import { initials } from '../lib/user'
+import { useTheme } from '../hooks/useTheme'
 import CreateTicketModal from './CreateTicketModal'
 import Icon from './Icon'
 import Logo from './Logo'
@@ -24,6 +25,7 @@ const ADMIN_NAV = [
 
 export default function Layout() {
   const { user, logout, viewAsCustomerId, setViewAsCustomerId, customers, activeCustomerName } = useAuthContext()
+  const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
@@ -89,6 +91,14 @@ export default function Layout() {
             {activeCustomerName}
           </div>
         )}
+
+        <button
+          onClick={toggleTheme}
+          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.12] bg-white/[0.06] text-ink-muted transition-colors hover:text-ink-primary"
+        >
+          <Icon name={theme === 'dark' ? 'light_mode' : 'dark_mode'} className="text-[18px]" />
+        </button>
 
         <button
           onClick={() => setTicketOpen(true)}
