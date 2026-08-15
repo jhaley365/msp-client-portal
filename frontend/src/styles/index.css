@@ -73,14 +73,14 @@ html:not(.dark) nav { border-color: rgba(0,0,0,0.08); }
     @apply bg-panel rounded-xl border border-[rgba(96,165,250,0.16)];
   }
   .tab-btn {
-    @apply px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors border-b-2 border-transparent text-ink-muted hover:text-white hover:border-white/20;
+    @apply px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors border-b-2 border-transparent text-ink-muted hover:text-ink-primary hover:border-white/20;
   }
   .tab-btn-active,
   .tab-btn.active {
-    @apply border-accent text-white;
+    @apply border-accent text-ink-primary;
   }
   .tab-btn-inactive {
-    @apply border-transparent text-ink-muted hover:text-white hover:border-white/20;
+    @apply border-transparent text-ink-muted hover:text-ink-primary hover:border-white/20;
   }
   .pill {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-[11.5px] font-semibold whitespace-nowrap capitalize;
