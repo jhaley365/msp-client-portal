@@ -155,7 +155,7 @@ export default function Layout() {
             className={({ isActive }) =>
               `-mb-px flex items-center gap-2 border-b-2 px-3.5 text-[13.5px] transition-colors ${
                 isActive
-                  ? 'border-accent font-bold text-white'
+                  ? 'border-accent font-bold text-ink-primary'
                   : 'border-transparent font-medium text-ink-muted hover:text-white'
               }`
             }
@@ -181,7 +181,7 @@ export default function Layout() {
               onClick={() => setMenuOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${
-                  isActive ? 'bg-accent/[0.15] text-white' : 'text-ink-secondary hover:bg-white/[0.06]'
+                  isActive ? 'bg-accent/[0.15] text-ink-primary' : 'text-ink-secondary hover:bg-white/[0.06]'
                 }`
               }
             >
