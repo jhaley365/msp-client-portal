@@ -293,7 +293,7 @@ export default function AwsPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="font-display text-xl font-bold text-white">AWS</h1>
+      <h1 className="font-display text-xl font-bold text-ink-primary">AWS</h1>
 
       <div className="flex flex-wrap gap-2">
         {tabs.map((tab) => (
@@ -304,7 +304,7 @@ export default function AwsPage() {
           >
             {tab}
             {tab === 'Coverage' && uncoveredCount > 0 && (
-              <span className="ml-1.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-tone-crit px-1 text-[10px] font-bold text-white">
+              <span className="ml-1.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-tone-crit px-1 text-[10px] font-bold text-ink-primary">
                 {uncoveredCount}
               </span>
             )}

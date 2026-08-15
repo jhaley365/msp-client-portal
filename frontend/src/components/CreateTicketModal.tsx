@@ -52,7 +52,7 @@ export default function CreateTicketModal({ defaultEmail, onClose }: Props) {
         </button>
 
         <div className="mb-1 font-mono text-[11px] tracking-[0.2em] text-accent">CREATE TICKET</div>
-        <h2 className="mb-1 font-display text-[22px] font-extrabold text-white">Submit a support request</h2>
+        <h2 className="mb-1 font-display text-[22px] font-extrabold text-ink-primary">Submit a support request</h2>
         <p className="mb-6 text-[13px] text-ink-muted">
           We'll respond to your message within one business day.
         </p>

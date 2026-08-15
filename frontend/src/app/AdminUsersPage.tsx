@@ -91,7 +91,7 @@ export default function AdminUsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <p className="font-mono text-[11px] tracking-[0.2em] text-accent mb-1">ADMIN</p>
-          <h1 className="font-display text-2xl font-extrabold text-white">Users</h1>
+          <h1 className="font-display text-2xl font-extrabold text-ink-primary">Users</h1>
         </div>
         <button
           onClick={() => setModalOpen(true)}
@@ -192,7 +192,7 @@ export default function AdminUsersPage() {
             </button>
 
             <div className="mb-1 font-mono text-[11px] tracking-[0.2em] text-accent">NEW USER</div>
-            <h2 className="mb-6 font-display text-[20px] font-extrabold text-white">Add user</h2>
+            <h2 className="mb-6 font-display text-[20px] font-extrabold text-ink-primary">Add user</h2>
 
             <form onSubmit={handleCreate} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">

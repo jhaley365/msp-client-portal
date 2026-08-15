@@ -53,7 +53,7 @@ export default function LoginPage() {
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(74,222,128,0.12)]">
                 <Icon name="mark_email_read" className="text-[28px] text-[#4ade80]" />
               </div>
-              <p className="font-semibold text-white text-lg">Check your email</p>
+              <p className="font-semibold text-ink-primary text-lg">Check your email</p>
               <p className="text-[13px] text-ink-muted leading-relaxed">
                 We sent a login link to <span className="text-ink-secondary font-medium">{email}</span>.
                 <br />It expires in 15 minutes.
@@ -81,7 +81,7 @@ export default function LoginPage() {
                     autoFocus
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white/[0.06] border border-white/[0.12] rounded-lg text-sm text-white placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+                    className="w-full px-4 py-2.5 bg-white/[0.06] border border-white/[0.12] rounded-lg text-sm text-ink-primary placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
                     placeholder="you@company.com"
                   />
                 </div>

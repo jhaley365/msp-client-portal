@@ -9,7 +9,7 @@ export default function Logo() {
         <circle cx="24" cy="24" r="4.4" fill="#fff" />
       </svg>
       <div className="flex flex-col leading-none">
-        <span className="font-display text-[15px] font-extrabold tracking-[0.14em] text-white">
+        <span className="font-display text-[15px] font-extrabold tracking-[0.14em] text-ink-primary">
           HALEY365
         </span>
         <span className="mt-[3px] text-[8px] tracking-[0.24em] text-ink-faint">

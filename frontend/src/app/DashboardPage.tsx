@@ -29,7 +29,7 @@ function StatGrid({ stats }: { stats: { value: string | number; label: string; t
         <div key={s.label} className="text-center">
           <div
             className="font-mono text-[22px] font-semibold tabular-nums"
-            style={{ color: s.tone ? TONE_FG[s.tone] : '#fff' }}
+            style={{ color: s.tone ? TONE_FG[s.tone] : 'var(--color-ink-primary)' }}
           >
             {s.value}
           </div>
@@ -79,7 +79,7 @@ export default function DashboardPage() {
           <div className="mb-2 font-mono text-[11.5px] tracking-[0.2em] text-brand-light">
             EXECUTIVE SUMMARY
           </div>
-          <h1 className="font-display text-[26px] font-extrabold tracking-[-0.01em] text-white">
+          <h1 className="font-display text-[26px] font-extrabold tracking-[-0.01em] text-ink-primary">
             Welcome back, {firstName(user?.name || user?.email) || 'there'}
           </h1>
           <div className="mt-1.5 text-[13px] text-ink-muted">
@@ -138,7 +138,7 @@ export default function DashboardPage() {
               >
                 <Icon name="cloud" className="text-[18px]" />
               </span>
-              <span className="font-display text-[15px] font-bold text-white">AWS Resources</span>
+              <span className="font-display text-[15px] font-bold text-ink-primary">AWS Resources</span>
             </div>
             <Link to="/aws" className="flex items-center gap-1 text-[12.5px] font-semibold text-icon-blue no-underline">
               View <Icon name="arrow_forward" className="text-[15px]" />
@@ -164,7 +164,7 @@ export default function DashboardPage() {
               >
                 <Icon name="confirmation_number" className="text-[18px]" />
               </span>
-              <span className="font-display text-[15px] font-bold text-white">Support Tickets</span>
+              <span className="font-display text-[15px] font-bold text-ink-primary">Support Tickets</span>
             </div>
             <Link to="/tickets" className="flex items-center gap-1 text-[12.5px] font-semibold text-icon-blue no-underline">
               View <Icon name="arrow_forward" className="text-[15px]" />
@@ -190,7 +190,7 @@ export default function DashboardPage() {
               >
                 <Icon name="shield" className="text-[18px]" />
               </span>
-              <span className="font-display text-[15px] font-bold text-white">Huntress Security</span>
+              <span className="font-display text-[15px] font-bold text-ink-primary">Huntress Security</span>
             </div>
             <Link to="/security" className="flex items-center gap-1 text-[12.5px] font-semibold text-icon-blue no-underline">
               View <Icon name="arrow_forward" className="text-[15px]" />
@@ -212,7 +212,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
         <div className="kpi-card !pb-2">
           <div className="mb-1 flex items-center justify-between">
-            <span className="font-display text-[15px] font-bold text-white">Recent Tickets</span>
+            <span className="font-display text-[15px] font-bold text-ink-primary">Recent Tickets</span>
             <Link to="/tickets" className="flex items-center gap-1 text-[12.5px] font-semibold text-icon-blue no-underline">
               All tickets <Icon name="arrow_forward" className="text-[15px]" />
             </Link>
@@ -236,7 +236,7 @@ export default function DashboardPage() {
 
         <div className="kpi-card !pb-2">
           <div className="mb-1 flex items-center justify-between">
-            <span className="font-display text-[15px] font-bold text-white">Recent Security Incidents</span>
+            <span className="font-display text-[15px] font-bold text-ink-primary">Recent Security Incidents</span>
             <Link to="/security" className="flex items-center gap-1 text-[12.5px] font-semibold text-icon-blue no-underline">
               All incidents <Icon name="arrow_forward" className="text-[15px]" />
             </Link>

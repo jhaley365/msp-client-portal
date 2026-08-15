@@ -19,7 +19,7 @@ export default function KpiCard({ label, value, sub, icon, tone = 'info' }: Prop
         </span>
         {icon && <Icon name={icon} className="text-[22px]" style={{ color: fg }} />}
       </div>
-      <div className="mt-3.5 font-mono text-[34px] font-semibold leading-none tabular-nums text-white">
+      <div className="mt-3.5 font-mono text-[34px] font-semibold leading-none tabular-nums text-ink-primary">
         {value}
       </div>
       {sub && <div className="mt-2.5 text-xs text-ink-muted">{sub}</div>}

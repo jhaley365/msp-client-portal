@@ -79,7 +79,7 @@ export default function DnsPage() {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-xl font-bold text-white">DNS — ScoutDNS</h1>
+        <h1 className="font-display text-xl font-bold text-ink-primary">DNS — ScoutDNS</h1>
         {summary?.last_synced_at && (
           <span className="text-xs text-ink-muted">
             Synced {fmtDate(summary.last_synced_at)} · {summary.period}

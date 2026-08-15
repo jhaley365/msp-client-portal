@@ -107,7 +107,7 @@ export default function O365Page() {
 
   return (
     <div className="space-y-5">
-      <h1 className="font-display text-xl font-bold text-white">Office 365</h1>
+      <h1 className="font-display text-xl font-bold text-ink-primary">Office 365</h1>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <KpiCard label="Total Licenses" value={summary?.total_licenses ?? '--'} icon="mail" tone="info" />

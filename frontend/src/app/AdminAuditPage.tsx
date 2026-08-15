@@ -37,7 +37,7 @@ export default function AdminAuditPage() {
     <div className="space-y-6">
       <div>
         <p className="font-mono text-[11px] tracking-[0.2em] text-accent mb-1">ADMIN</p>
-        <h1 className="font-display text-2xl font-extrabold text-white">Login Audit</h1>
+        <h1 className="font-display text-2xl font-extrabold text-ink-primary">Login Audit</h1>
         <p className="mt-1 text-[13px] text-ink-muted">{records.length} login{records.length !== 1 ? 's' : ''} recorded</p>
       </div>
 

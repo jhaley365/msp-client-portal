@@ -78,7 +78,7 @@ export default function TicketsPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="font-display text-xl font-bold text-white">Support Tickets</h1>
+      <h1 className="font-display text-xl font-bold text-ink-primary">Support Tickets</h1>
 
       <div className="flex gap-2 flex-wrap">
         {filters.map((f) => (

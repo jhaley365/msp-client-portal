@@ -75,7 +75,7 @@ export default function SecurityPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="font-display text-xl font-bold text-white">Security — Huntress</h1>
+      <h1 className="font-display text-xl font-bold text-ink-primary">Security — Huntress</h1>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <KpiCard label="Total Agents" value={summary?.total_agents ?? '--'} icon="shield" tone="muted" />
