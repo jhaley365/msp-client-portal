@@ -62,7 +62,7 @@ def fetch_ec2_instances() -> list[dict]:
     tbl = ddb.Table("EC2Instances")
     items: list[dict] = []
     kwargs: dict = {
-        "IndexName": "customer_id-index",
+        "IndexName": "customer_id-last_synced_at-index",
         "KeyConditionExpression": boto3.dynamodb.conditions.Key("customer_id").eq(CUSTOMER_ID),
     }
     while True:
