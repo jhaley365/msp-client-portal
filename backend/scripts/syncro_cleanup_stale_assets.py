@@ -93,10 +93,14 @@ def fetch_all_assets(customer_filter: str) -> list[dict]:
 def parse_date(date_str: str | None) -> datetime | None:
     if not date_str:
         return None
-    for fmt in ("%Y-%m-%dT%H:%M:%S.%fZ", "%Y-%m-%dT%H:%M:%SZ",
-                "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%d"):
+    s = date_str.strip()
+    # Normalise -HH:MM offset to +HHMM so %z can parse it
+    import re
+    s = re.sub(r'([+-])(\d{2}):(\d{2})$', r'\1\2\3', s)
+    for fmt in ("%Y-%m-%dT%H:%M:%S.%f%z", "%Y-%m-%dT%H:%M:%S%z",
+                "%Y-%m-%dT%H:%M:%S.%fZ", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d"):
         try:
-            dt = datetime.strptime(date_str[:26], fmt[:len(fmt)])
+            dt = datetime.strptime(s, fmt)
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=timezone.utc)
             return dt
