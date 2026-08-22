@@ -126,7 +126,7 @@ def find_stale(assets: list[dict], stale_days: int) -> list[dict]:
 
 
 def delete_asset(asset_id: int) -> bool:
-    resp = requests.delete(f"{SYNCRO_BASE}/customer_assets/{asset_id}",
+    resp = requests.delete(f"{SYNCRO_BASE}/rmm/{asset_id}",
                            headers=HEADERS, timeout=30)
     if resp.status_code not in (200, 204):
         print(f"    [HTTP {resp.status_code}] {resp.text[:200]}")
