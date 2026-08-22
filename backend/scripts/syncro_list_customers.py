@@ -50,7 +50,13 @@ if assets:
     for k, v in assets[0].items():
         print(f"  {k!r:35s} = {str(v)[:80]!r}")
 
-print("\nUnique customer_name values (count):")
-counts = Counter(str(a.get("customer_name") or "") for a in assets)
+print("\nUnique customer business_name values (count):")
+counts = Counter(str((a.get("customer") or {}).get("business_name") or "") for a in assets)
 for name, cnt in sorted(counts.items(), key=lambda x: -x[1]):
     print(f"  {cnt:5d}  {name!r}")
+
+print("\nUnique customer_id values (count):")
+counts2 = Counter(str(a.get("customer_id") or "") for a in assets)
+for cid, cnt in sorted(counts2.items(), key=lambda x: -x[1]):
+    biz = next(((a.get("customer") or {}).get("business_name") for a in assets if str(a.get("customer_id")) == cid), "")
+    print(f"  {cnt:5d}  customer_id={cid!r}  business_name={biz!r}")

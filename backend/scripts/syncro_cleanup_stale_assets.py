@@ -81,7 +81,9 @@ def fetch_all_assets(customer_filter: str) -> list[dict]:
         before = len(assets)
         assets = [
             a for a in assets
-            if customer_filter.upper() in (a.get("customer_name") or "").upper()
+            if customer_filter.upper() in (
+                (a.get("customer") or {}).get("business_name") or ""
+            ).upper()
         ]
         print(f"  Filtered to '{customer_filter}' customer: {len(assets)} of {before} assets")
 
@@ -162,7 +164,7 @@ def main():
         last = a["_last_updated"].strftime("%Y-%m-%d")
         name = (a.get("name") or a.get("hostname") or "")[:34]
         os_  = (a.get("os_version") or a.get("operating_system") or a.get("os") or "")[:29]
-        cust = (a.get("customer_name") or "")[:20]
+        cust = ((a.get("customer") or {}).get("business_name") or "")[:20]
         print(f"  {a['id']:<10} {last:<14} {name:<35} {os_:<30} {cust}")
 
     print(f"\nTotal: {len(stale)} assets would be {'DELETED' if args.delete else 'deleted (dry-run)'}.")
