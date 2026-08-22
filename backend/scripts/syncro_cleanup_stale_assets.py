@@ -125,12 +125,21 @@ def find_stale(assets: list[dict], stale_days: int) -> list[dict]:
     return stale
 
 
-def delete_asset(asset_id: int) -> bool:
-    resp = requests.delete(f"{SYNCRO_BASE}/rmm/{asset_id}",
-                           headers=HEADERS, timeout=30)
-    if resp.status_code not in (200, 204):
-        print(f"    [HTTP {resp.status_code}] {resp.text[:200]}")
-    return resp.status_code in (200, 204)
+def delete_asset(asset: dict) -> bool:
+    rmm_id = (asset.get("rmm_store") or {}).get("id")
+    asset_id = asset["id"]
+    # Try rmm_store.id first, fall back to asset id
+    for url in [
+        f"{SYNCRO_BASE}/rmm/{rmm_id}" if rmm_id else None,
+        f"{SYNCRO_BASE}/customer_assets/{asset_id}",
+    ]:
+        if not url:
+            continue
+        resp = requests.delete(url, headers=HEADERS, timeout=30)
+        if resp.status_code in (200, 204):
+            return True
+        print(f"    [HTTP {resp.status_code} {url.split('/')[-2]}] {resp.text[:120]}")
+    return False
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -192,7 +201,7 @@ def main():
     failed  = 0
     for a in stale:
         name = (a.get("name") or a.get("hostname") or str(a["id"]))
-        if delete_asset(a["id"]):
+        if delete_asset(a):
             print(f"  ✓ Deleted {a['id']} — {name}")
             deleted += 1
         else:
