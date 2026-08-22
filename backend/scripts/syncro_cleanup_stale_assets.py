@@ -109,9 +109,10 @@ def find_stale(assets: list[dict], stale_days: int) -> list[dict]:
     cutoff = datetime.now(tz=timezone.utc) - timedelta(days=stale_days)
     stale = []
     for a in assets:
+        rmm = a.get("rmm_store") or {}
         last_updated = (
+            parse_date(rmm.get("updated_at")) or      # RMM agent last sync (matches Syncro UI)
             parse_date(a.get("updated_at")) or
-            parse_date(a.get("last_seen_at")) or
             parse_date(a.get("created_at"))
         )
         if last_updated and last_updated < cutoff:
