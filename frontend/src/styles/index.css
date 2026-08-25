@@ -3,25 +3,25 @@
 @tailwind utilities;
 
 /* ── Design-token CSS variables ──────────────────────────────────────────── */
-/* Light mode (default) */
+/* Light mode (default) — cool blue-slate, not stark white */
 :root {
-  --color-page:          #f7f8fa;
-  --color-chrome:        #ffffff;
-  --color-panel:         #ffffff;
-  --color-rail:          #f0f2f5;
-  --color-panel-border:  #dde2ea;
-  --color-divider:       #e8ecf1;
-  --color-row-hairline:  #eef1f5;
-  --color-ctrl-bg:       #f0f2f5;
-  --color-ctrl-border:   #d1d7e0;
-  --color-rail-active:   #e8ecf2;
-  --color-ink-primary:   #141a26;
-  --color-ink-secondary: #3d4a5c;
-  --color-ink-muted:     #5b6675;
-  --color-ink-label:     #4a5568;
-  --color-ink-faint:     #8494a8;
-  --color-ink-mono:      #6e7a8a;
-  --color-ink-chevron:   #b0bac8;
+  --color-page:          #e8ecf2;
+  --color-chrome:        #edf0f5;
+  --color-panel:         #f2f4f8;
+  --color-rail:          #dde2ea;
+  --color-panel-border:  #cdd3dd;
+  --color-divider:       #d5dbe5;
+  --color-row-hairline:  #dce1ea;
+  --color-ctrl-bg:       #e3e7ee;
+  --color-ctrl-border:   #c4ccd8;
+  --color-rail-active:   #d4dae5;
+  --color-ink-primary:   #0f1520;
+  --color-ink-secondary: #2e3a4e;
+  --color-ink-muted:     #4f5e72;
+  --color-ink-label:     #3d4d61;
+  --color-ink-faint:     #7286a0;
+  --color-ink-mono:      #5e7088;
+  --color-ink-chevron:   #9aaabb;
 }
 
 /* Dark mode — applied when <html class="dark"> */
