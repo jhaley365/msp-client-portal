@@ -1,5 +1,5 @@
 import Icon from './Icon'
-import { Tone, TONE_FG } from '../lib/tone'
+import { Tone, TONE_VAR } from '../lib/tone'
 
 export interface KpiCell {
   label: string
@@ -20,10 +20,11 @@ export default function KpiStrip({ cells }: Props) {
     <div className="flex overflow-hidden rounded-lg border border-panel-border bg-panel">
       {cells.map((cell, i) => {
         const tone = cell.tone ?? 'info'
+        const toneColor = TONE_VAR[tone]
         const valueFg =
           tone === 'info' || tone === 'muted'
             ? 'var(--color-ink-primary)'
-            : TONE_FG[tone]
+            : toneColor
 
         return (
           <div
@@ -38,14 +39,14 @@ export default function KpiStrip({ cells }: Props) {
                 <Icon
                   name={cell.icon}
                   className="text-[16px]"
-                  style={{ color: TONE_FG[tone] }}
+                  style={{ color: toneColor }}
                 />
               )}
             </div>
             <div
               className="font-mono text-[34px] font-medium leading-none tabular-nums"
               style={{ color: valueFg }}
-            >
+          >
               {cell.value}
             </div>
             {cell.sub && (

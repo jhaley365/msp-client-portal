@@ -22,10 +22,26 @@
   --color-ink-faint:     #7286a0;
   --color-ink-mono:      #5e7088;
   --color-ink-chevron:   #9aaabb;
+
+  /* Tone colors darkened for light-mode contrast */
+  --tone-ok:     #16a34a;
+  --tone-warn:   #b45309;
+  --tone-crit:   #dc2626;
+  --tone-info:   #1d4ed8;
+  --tone-purple: #7c3aed;
+  --tone-muted:  #4b5563;
 }
 
 /* Dark mode — applied when <html class="dark"> */
 html.dark {
+  /* Tone colors revert to vivid light hues on dark surfaces */
+  --tone-ok:     #4ade80;
+  --tone-warn:   #fbbf24;
+  --tone-crit:   #f87171;
+  --tone-info:   #7cb0ff;
+  --tone-purple: #c4b5fd;
+  --tone-muted:  #9aa6b8;
+
   --color-page:          #0b0c10;
   --color-chrome:        #0b0c10;
   --color-panel:         #0d0f14;
