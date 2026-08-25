@@ -1,5 +1,5 @@
 import Icon from './Icon'
-import { Tone, TONE_FG } from '../lib/tone'
+import { Tone, TONE_VAR } from '../lib/tone'
 
 interface Props {
   label: string
@@ -9,20 +9,29 @@ interface Props {
   tone?: Tone
 }
 
+// Flat panel variant — tone is carried by the value colour, not a top border.
 export default function KpiCard({ label, value, sub, icon, tone = 'info' }: Props) {
-  const fg = TONE_FG[tone]
+  const toneColor = TONE_VAR[tone]
+  const valueFg = tone === 'info' || tone === 'muted' ? 'var(--color-ink-primary)' : toneColor
   return (
-    <div className="kpi-card" style={{ borderTop: `3px solid ${fg}` }}>
-      <div className="flex items-start justify-between">
-        <span className="text-[11.5px] font-semibold uppercase tracking-wider text-ink-muted">
-          {label}
-        </span>
-        {icon && <Icon name={icon} className="text-[22px]" style={{ color: fg }} />}
+    <div className="kpi-card flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <span className="eyebrow">{label}</span>
+        {icon && (
+          <Icon
+            name={icon}
+            className="text-[16px]"
+            style={{ color: toneColor }}
+          />
+        )}
       </div>
-      <div className="mt-3.5 font-mono text-[34px] font-semibold leading-none tabular-nums text-ink-primary">
+      <div
+        className="font-mono text-[34px] font-medium leading-none tabular-nums"
+        style={{ color: valueFg }}
+      >
         {value}
       </div>
-      {sub && <div className="mt-2.5 text-xs text-ink-muted">{sub}</div>}
+      {sub && <div className="text-[11.5px] text-ink-faint">{sub}</div>}
     </div>
   )
 }

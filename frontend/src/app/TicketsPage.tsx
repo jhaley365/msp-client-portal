@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import api from '../lib/api'
-import KpiCard from '../components/KpiCard'
+import KpiStrip, { KpiCell } from '../components/KpiStrip'
 import DataTable, { Column } from '../components/DataTable'
 import Badge from '../components/Badge'
 
-type StatusFilter = 'all' | 'open' | 'New' | 'In Progress' | 'Waiting on Customer' | 'Waiting for Parts' | 'Scheduled' | 'Customer Reply' | 'Escalated to MSP' | 'Abandoned' | 'Resolved'
+type StatusFilter =
+  | 'all' | 'open' | 'New' | 'In Progress' | 'Waiting on Customer'
+  | 'Waiting for Parts' | 'Scheduled' | 'Customer Reply'
+  | 'Escalated to MSP' | 'Abandoned' | 'Resolved'
 
 interface Ticket {
   ticket_number: string | number
@@ -16,10 +19,7 @@ interface Ticket {
   updated_at: string
 }
 
-interface Summary {
-  total: number
-  open: number
-}
+interface Summary { total: number; open: number }
 
 export default function TicketsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('open')
@@ -36,7 +36,7 @@ export default function TicketsPage() {
       if (statusFilter !== 'all') params.status = statusFilter
       if (append && lastKey) params.last_key = lastKey
       const { data } = await api.get('/syncro/tickets', { params })
-      setTickets((prev) => append ? [...prev, ...data.items] : data.items)
+      setTickets((prev) => (append ? [...prev, ...data.items] : data.items))
       setLastKey(data.next_key ?? null)
       setHasMore(!!data.next_key)
     } catch {
@@ -66,21 +66,53 @@ export default function TicketsPage() {
     { label: 'All', value: 'all' },
   ]
 
+  const kpiCells: KpiCell[] = [
+    { label: 'Total Tickets', value: summary?.total ?? '—', icon: 'confirmation_number', tone: 'info' },
+    { label: 'Open Tickets',  value: summary?.open  ?? '—', icon: 'mark_email_unread',   tone: 'warn' },
+    { label: 'Avg Response Time', value: '—', icon: 'schedule', tone: 'muted' },
+  ]
+
   const columns: Column<Ticket>[] = [
-    { key: 'created_at', header: 'Created', render: (row) => new Date(row.created_at).toLocaleDateString() },
-    { key: 'updated_at', header: 'Updated', render: (row) => new Date(row.updated_at).toLocaleDateString() },
-    { key: 'ticket_number', header: 'Ticket #', render: (row) => `#${row.ticket_number}` },
-    { key: 'subject', header: 'Subject', className: 'max-w-xs whitespace-normal break-words' },
-    { key: 'status', header: 'Status', render: (row) => <Badge state={row.status} /> },
+    {
+      key: 'created_at',
+      header: 'Created',
+      mono: true,
+      render: (row) => new Date(row.created_at).toLocaleDateString(),
+    },
+    {
+      key: 'updated_at',
+      header: 'Updated',
+      mono: true,
+      render: (row) => new Date(row.updated_at).toLocaleDateString(),
+    },
+    {
+      key: 'ticket_number',
+      header: 'Ticket #',
+      accent: true,
+      render: (row) => `#${row.ticket_number}`,
+    },
+    {
+      key: 'subject',
+      header: 'Subject',
+      className: 'max-w-xs whitespace-normal break-words',
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (row) => <Badge state={row.status} />,
+    },
     { key: 'priority', header: 'Priority' },
     { key: 'assigned_tech', header: 'Assigned Tech' },
   ]
 
   return (
-    <div className="space-y-5">
-      <h1 className="font-display text-xl font-bold text-ink-primary">Support Tickets</h1>
+    <div className="flex flex-col gap-[14px]">
+      {/* Page title — "Support Tickets" is provided via breadcrumb in the topbar;
+          this secondary label mirrors the spec's "Tickets · Support Tickets" format */}
+      <div className="eyebrow">Support Tickets</div>
 
-      <div className="flex gap-2 flex-wrap">
+      {/* Status tab strip */}
+      <div className="flex flex-wrap gap-0 border-b border-panel-border">
         {filters.map((f) => (
           <button
             key={f.value}
@@ -92,12 +124,10 @@ export default function TicketsPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <KpiCard label="Total Tickets" value={summary?.total ?? '--'} icon="confirmation_number" tone="info" />
-        <KpiCard label="Open Tickets" value={summary?.open ?? '--'} icon="mark_email_unread" tone="warn" />
-        <KpiCard label="Avg Response Time" value="--" icon="schedule" tone="muted" />
-      </div>
+      {/* 3-cell KPI strip */}
+      <KpiStrip cells={kpiCells} />
 
+      {/* Ticket table */}
       <div className="section-card">
         <DataTable<Ticket>
           columns={columns}
@@ -106,6 +136,7 @@ export default function TicketsPage() {
           emptyMessage="No tickets found."
           hasMore={hasMore}
           onLoadMore={() => loadTickets(true)}
+          keyField="ticket_number"
         />
       </div>
     </div>

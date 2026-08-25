@@ -107,7 +107,7 @@ export default function O365Page() {
 
   return (
     <div className="space-y-5">
-      <h1 className="font-display text-xl font-bold text-ink-primary">Office 365</h1>
+      <h1 className="font-sans text-xl font-bold text-ink-primary">Office 365</h1>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <KpiCard label="Total Licenses" value={summary?.total_licenses ?? '--'} icon="mail" tone="info" />
@@ -118,7 +118,7 @@ export default function O365Page() {
 
       <div className="section-card">
         <div className="p-4 border-b border-white/[0.07] flex items-center justify-between">
-          <h2 className="font-display text-sm font-semibold text-white">License SKUs</h2>
+          <h2 className="font-sans text-sm font-semibold text-white">License SKUs</h2>
           <span className="text-xs text-ink-muted">{licenses.length} SKUs</span>
         </div>
         <DataTable<License>
@@ -132,7 +132,7 @@ export default function O365Page() {
 
       <div className="section-card">
         <div className="p-4 border-b border-white/[0.07] flex items-center justify-between">
-          <h2 className="font-display text-sm font-semibold text-white">Users</h2>
+          <h2 className="font-sans text-sm font-semibold text-white">Users</h2>
           <span className="text-xs text-ink-muted">{mailboxes.length} total</span>
         </div>
         <div className="overflow-y-auto" style={{ maxHeight: '32rem' }}>

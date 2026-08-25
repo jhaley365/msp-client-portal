@@ -293,7 +293,7 @@ export default function AwsPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="font-display text-xl font-bold text-ink-primary">AWS</h1>
+      <h1 className="font-sans text-xl font-bold text-ink-primary">AWS</h1>
 
       <div className="flex flex-wrap gap-2">
         {tabs.map((tab) => (

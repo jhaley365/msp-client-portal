@@ -1,12 +1,23 @@
 export type Tone = 'ok' | 'warn' | 'crit' | 'info' | 'purple' | 'muted'
 
+// Dark-mode hex values — used for inline style= props (KPI values, icons, stat grids)
 export const TONE_FG: Record<Tone, string> = {
-  ok: '#4ade80',
-  warn: '#fbbf24',
-  crit: '#f87171',
-  info: '#7cb0ff',
+  ok:     '#4ade80',
+  warn:   '#fbbf24',
+  crit:   '#f87171',
+  info:   '#7cb0ff',
   purple: '#c4b5fd',
-  muted: '#9aa6b8',
+  muted:  '#9aa6b8',
+}
+
+// CSS variable references — used in Badge/chips so light-mode overrides apply automatically
+export const TONE_VAR: Record<Tone, string> = {
+  ok:     'var(--tone-ok,     #4ade80)',
+  warn:   'var(--tone-warn,   #fbbf24)',
+  crit:   'var(--tone-crit,   #f87171)',
+  info:   'var(--tone-info,   #7cb0ff)',
+  purple: 'var(--tone-purple, #c4b5fd)',
+  muted:  'var(--tone-muted,  #9aa6b8)',
 }
 
 const STATE_TONES: Record<string, Tone> = {
