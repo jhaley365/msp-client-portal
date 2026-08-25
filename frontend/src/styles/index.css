@@ -5,36 +5,56 @@
 /* ── Design-token CSS variables ──────────────────────────────────────────── */
 /* Light mode (default) */
 :root {
-  --color-page:          #f1f5f9;
+  --color-page:          #f7f8fa;
   --color-chrome:        #ffffff;
   --color-panel:         #ffffff;
-  --color-ink-primary:   #0f172a;
-  --color-ink-secondary: #475569;
-  --color-ink-muted:     #64748b;
-  --color-ink-faint:     #94a3b8;
+  --color-rail:          #f0f2f5;
+  --color-panel-border:  #dde2ea;
+  --color-divider:       #e8ecf1;
+  --color-row-hairline:  #eef1f5;
+  --color-ctrl-bg:       #f0f2f5;
+  --color-ctrl-border:   #d1d7e0;
+  --color-rail-active:   #e8ecf2;
+  --color-ink-primary:   #141a26;
+  --color-ink-secondary: #3d4a5c;
+  --color-ink-muted:     #5b6675;
+  --color-ink-label:     #4a5568;
+  --color-ink-faint:     #8494a8;
+  --color-ink-mono:      #6e7a8a;
+  --color-ink-chevron:   #b0bac8;
 }
 
 /* Dark mode — applied when <html class="dark"> */
 html.dark {
-  --color-page:          #0c111e;
-  --color-chrome:        #0a0f1a;
-  --color-panel:         #0e1424;
-  --color-ink-primary:   #eaf0fb;
-  --color-ink-secondary: #c4cede;
-  --color-ink-muted:     #8a97ab;
-  --color-ink-faint:     #7f8ea3;
+  --color-page:          #0b0c10;
+  --color-chrome:        #0b0c10;
+  --color-panel:         #0d0f14;
+  --color-rail:          #08090c;
+  --color-panel-border:  #22242b;
+  --color-divider:       #1c1e24;
+  --color-row-hairline:  #16181d;
+  --color-ctrl-bg:       #101218;
+  --color-ctrl-border:   #262931;
+  --color-rail-active:   #191b21;
+  --color-ink-primary:   #ffffff;
+  --color-ink-secondary: #dfe3e9;
+  --color-ink-muted:     #8d95a3;
+  --color-ink-label:     #cdd2da;
+  --color-ink-faint:     #6e7684;
+  --color-ink-mono:      #7b8391;
+  --color-ink-chevron:   #3d434e;
 }
 
-/* In light mode, white-on-white dividers become visible dark lines */
+/* In light mode, white-alpha borders become dark-alpha */
 html:not(.dark) .border-white\/\[0\.07\] { border-color: rgba(0,0,0,0.07); }
 html:not(.dark) .border-b.border-white\/\[0\.07\] { border-color: rgba(0,0,0,0.07); }
 html:not(.dark) .border-t.border-white\/\[0\.07\] { border-color: rgba(0,0,0,0.07); }
-/* Subtle surface highlight in light mode */
 html:not(.dark) .bg-white\/\[0\.06\] { background-color: rgba(0,0,0,0.04); }
 html:not(.dark) .hover\:bg-white\/\[0\.06\]:hover { background-color: rgba(0,0,0,0.04); }
-/* Nav border */
-html:not(.dark) header,
-html:not(.dark) nav { border-color: rgba(0,0,0,0.08); }
+html:not(.dark) .divide-white\/\[0\.07\] > * + * { border-color: rgba(0,0,0,0.07); }
+html:not(.dark) header, html:not(.dark) nav { border-color: rgba(0,0,0,0.08); }
+/* Skeleton shimmer in light mode */
+html:not(.dark) .bg-white\/10 { background-color: rgba(0,0,0,0.06); }
 
 @font-face {
   font-family: 'Material Symbols Rounded';
@@ -66,23 +86,30 @@ html:not(.dark) nav { border-color: rgba(0,0,0,0.08); }
 }
 
 @layer components {
+  /* Flat panel — hairline border, no glow, radius 8 */
   .kpi-card {
-    @apply bg-panel rounded-xl border border-[rgba(96,165,250,0.16)] p-5;
+    @apply bg-panel rounded-lg border border-panel-border p-[17px];
   }
   .section-card {
-    @apply bg-panel rounded-xl border border-[rgba(96,165,250,0.16)];
+    @apply bg-panel rounded-lg border border-panel-border;
   }
+  /* Status tab strip */
   .tab-btn {
-    @apply px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors border-b-2 border-transparent text-ink-muted hover:text-ink-primary hover:border-white/20;
+    @apply px-3 py-3 text-[12.5px] font-medium whitespace-nowrap transition-colors border-b-2 border-transparent text-ink-muted hover:text-ink-primary;
   }
   .tab-btn-active,
   .tab-btn.active {
-    @apply border-accent text-ink-primary;
+    @apply border-accent text-ink-primary font-semibold;
   }
   .tab-btn-inactive {
-    @apply border-transparent text-ink-muted hover:text-ink-primary hover:border-white/20;
+    @apply border-transparent text-ink-muted hover:text-ink-primary;
   }
+  /* Status chip — squarish, radius 4, 10.5px mono */
   .pill {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-[11.5px] font-semibold whitespace-nowrap capitalize;
+    @apply inline-flex items-center px-2 py-0.5 rounded text-[10.5px] font-medium whitespace-nowrap capitalize font-mono;
+  }
+  /* Mono eyebrow label (panel/section titles) */
+  .eyebrow {
+    @apply font-mono text-[10.5px] font-medium uppercase tracking-[0.13em] text-ink-mono;
   }
 }
