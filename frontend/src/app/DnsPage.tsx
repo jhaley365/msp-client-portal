@@ -79,7 +79,7 @@ export default function DnsPage() {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-xl font-bold text-ink-primary">DNS — ScoutDNS</h1>
+        <h1 className="font-sans text-xl font-bold text-ink-primary">DNS — ScoutDNS</h1>
         {summary?.last_synced_at && (
           <span className="text-xs text-ink-muted">
             Synced {fmtDate(summary.last_synced_at)} · {summary.period}
@@ -102,7 +102,7 @@ export default function DnsPage() {
       {/* Top categories and domains */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="section-card p-5">
-          <h2 className="font-display text-sm font-semibold text-white mb-3">Top Blocked Categories</h2>
+          <h2 className="font-sans text-sm font-semibold text-white mb-3">Top Blocked Categories</h2>
           {loading ? (
             <div className="space-y-2">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -124,7 +124,7 @@ export default function DnsPage() {
         </div>
 
         <div className="section-card p-5">
-          <h2 className="font-display text-sm font-semibold text-white mb-3">Top Blocked Domains</h2>
+          <h2 className="font-sans text-sm font-semibold text-white mb-3">Top Blocked Domains</h2>
           {loading ? (
             <div className="space-y-2">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -149,7 +149,7 @@ export default function DnsPage() {
       {/* Sites */}
       <div className="section-card">
         <div className="p-4 border-b border-white/[0.07] flex items-center justify-between">
-          <h2 className="font-display text-sm font-semibold text-white">Network Sites</h2>
+          <h2 className="font-sans text-sm font-semibold text-white">Network Sites</h2>
           <span className="text-xs text-ink-muted">{sites.length} total</span>
         </div>
         <div className="overflow-y-auto" style={{ maxHeight: '20rem' }}>
@@ -166,7 +166,7 @@ export default function DnsPage() {
       {/* Roaming clients */}
       <div className="section-card">
         <div className="p-4 border-b border-white/[0.07] flex items-center justify-between">
-          <h2 className="font-display text-sm font-semibold text-white">Roaming Clients</h2>
+          <h2 className="font-sans text-sm font-semibold text-white">Roaming Clients</h2>
           <span className="text-xs text-ink-muted">{clients.length} total</span>
         </div>
         <div className="overflow-y-auto" style={{ maxHeight: '32rem' }}>

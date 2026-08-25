@@ -75,7 +75,7 @@ export default function SecurityPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="font-display text-xl font-bold text-ink-primary">Security — Huntress</h1>
+      <h1 className="font-sans text-xl font-bold text-ink-primary">Security — Huntress</h1>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <KpiCard label="Total Agents" value={summary?.total_agents ?? '--'} icon="shield" tone="muted" />
@@ -87,7 +87,7 @@ export default function SecurityPage() {
       <div className="space-y-4">
         <div className="section-card">
           <div className="p-4 border-b border-white/[0.07] flex items-center justify-between">
-            <h2 className="font-display text-sm font-semibold text-white">Incidents</h2>
+            <h2 className="font-sans text-sm font-semibold text-white">Incidents</h2>
             <span className="text-xs text-ink-muted">{incidents.length} total</span>
           </div>
           <div className="overflow-y-auto" style={{ maxHeight: '32rem' }}>
@@ -102,7 +102,7 @@ export default function SecurityPage() {
 
         <div className="section-card">
           <div className="p-4 border-b border-white/[0.07] flex items-center justify-between">
-            <h2 className="font-display text-sm font-semibold text-white">Agents</h2>
+            <h2 className="font-sans text-sm font-semibold text-white">Agents</h2>
             <span className="text-xs text-ink-muted">{agents.length} total</span>
           </div>
           <div className="overflow-y-auto" style={{ maxHeight: '32rem' }}>

@@ -131,7 +131,7 @@ export default function MonitoringPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="font-display text-xl font-bold text-ink-primary">Monitoring</h1>
+      <h1 className="font-sans text-xl font-bold text-ink-primary">Monitoring</h1>
 
       {/* KPI row */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -163,7 +163,7 @@ export default function MonitoringPage() {
 
       {/* Hosts table */}
       <div className="section-card">
-        <h2 className="mb-4 font-display text-[15px] font-semibold text-ink-primary">
+        <h2 className="mb-4 font-sans text-[15px] font-semibold text-ink-primary">
           Hosts
           {s ? (
             <span className="ml-2 font-mono text-[13px] font-normal text-ink-muted">
@@ -182,7 +182,7 @@ export default function MonitoringPage() {
 
       {/* Problems table */}
       <div className="section-card">
-        <h2 className="mb-4 font-display text-[15px] font-semibold text-ink-primary">
+        <h2 className="mb-4 font-sans text-[15px] font-semibold text-ink-primary">
           Problems
           {problems.length > 0 ? (
             <span className="ml-2 font-mono text-[13px] font-normal text-tone-crit">

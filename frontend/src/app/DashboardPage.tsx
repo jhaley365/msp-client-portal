@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import api from '../lib/api'
 import Icon from '../components/Icon'
 import Badge from '../components/Badge'
-import KpiCard from '../components/KpiCard'
+import KpiStrip, { KpiCell } from '../components/KpiStrip'
 import { toneForState, TONE_FG, Tone } from '../lib/tone'
 import { firstName } from '../lib/user'
 import { useAuthContext } from './AuthContext'
@@ -22,18 +22,18 @@ const severityIcon = (tone: Tone) => (tone === 'purple' || tone === 'crit' ? 'gp
 function StatGrid({ stats }: { stats: { value: string | number; label: string; tone?: Tone }[] }) {
   return (
     <div
-      className="grid gap-2 border-t border-white/[0.07] pt-4"
+      className="grid gap-2 border-t border-divider pt-4"
       style={{ gridTemplateColumns: `repeat(${stats.length}, minmax(0, 1fr))` }}
     >
       {stats.map((s) => (
         <div key={s.label} className="text-center">
           <div
-            className="font-mono text-[22px] font-semibold tabular-nums"
+            className="font-mono text-[22px] font-medium tabular-nums"
             style={{ color: s.tone ? TONE_FG[s.tone] : 'var(--color-ink-primary)' }}
           >
             {s.value}
           </div>
-          <div className="mt-1 text-[11.5px] text-ink-muted">{s.label}</div>
+          <div className="mt-1 text-[11px] text-ink-faint">{s.label}</div>
         </div>
       ))}
     </div>
@@ -71,160 +71,158 @@ export default function DashboardPage() {
   const scoutTotal = (scout?.allowed_requests ?? 0) + (scout?.blocked_requests ?? 0)
   const scoutBlockRate = scout && scoutTotal > 0 ? ((scout.blocked_requests / scoutTotal) * 100).toFixed(1) : null
 
+  const monitoringDown = monitoring ? monitoring.hosts_down + monitoring.hosts_unreachable : 0
+  const monitoringTone = !monitoring ? 'muted' : monitoringDown > 0 ? 'crit' : 'ok'
+  const monitoringValue = monitoring
+    ? monitoringDown > 0
+      ? `${monitoringDown} Down`
+      : 'All Up'
+    : '—'
+
+  const kpiCells: KpiCell[] = [
+    {
+      label: 'EC2 Instances',
+      value: fmt(aws?.instances),
+      sub: 'Across all regions',
+      icon: 'dns',
+      tone: 'info',
+    },
+    {
+      label: 'Open Tickets',
+      value: fmt(syncro?.open),
+      sub: syncro ? `${fmt(syncro.in_progress)} in progress` : 'Loading…',
+      icon: 'confirmation_number',
+      tone: 'warn',
+    },
+    {
+      label: 'Security Incidents',
+      value: fmt(huntress?.open_incidents),
+      sub: 'Open · Huntress',
+      icon: 'shield',
+      tone: 'ok',
+    },
+    {
+      label: 'DNS Blocks Today',
+      value: typeof scout?.blocked_requests === 'number' ? fmt(scout.blocked_requests) : '—',
+      sub: scoutBlockRate !== null ? `${scoutBlockRate}% block rate` : 'Awaiting data feed',
+      icon: 'block',
+      tone: typeof scout?.blocked_requests === 'number' ? 'info' : 'muted',
+    },
+    {
+      label: 'Device Monitoring',
+      value: monitoringValue,
+      sub: monitoring ? `${monitoring.hosts_up} of ${monitoring.total_hosts} online` : 'Loading…',
+      icon: 'monitor_heart',
+      tone: monitoringTone,
+    },
+  ]
+
   return (
-    <div className="flex flex-col gap-4.5">
+    <div className="flex flex-col gap-[14px]">
       {/* Page head */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="mb-2 font-mono text-[11.5px] tracking-[0.2em] text-brand-light">
-            EXECUTIVE SUMMARY
-          </div>
-          <h1 className="font-display text-[26px] font-extrabold tracking-[-0.01em] text-ink-primary">
+          <div className="eyebrow mb-2">EXECUTIVE SUMMARY</div>
+          <h1 className="text-[22px] font-semibold tracking-[-0.015em] text-ink-primary">
             Welcome back, {firstName(user?.name || user?.email) || 'there'}
           </h1>
-          <div className="mt-1.5 text-[13px] text-ink-muted">
-            {activeCustomerName} · Last synced {lastSync}
-          </div>
+        </div>
+        <div className="font-mono text-[11.5px] text-ink-faint">
+          {activeCustomerName} · Last synced {lastSync}
         </div>
       </div>
 
-      {/* KPI row */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <KpiCard
-          label="EC2 Instances"
-          value={fmt(aws?.instances)}
-          sub="Across all regions"
-          icon="dns"
-          tone="info"
-        />
-        <KpiCard
-          label="Open Tickets"
-          value={fmt(syncro?.open)}
-          sub={syncro ? `${fmt(syncro.in_progress)} in progress` : 'Loading…'}
-          icon="confirmation_number"
-          tone="warn"
-        />
-        <KpiCard
-          label="Security Incidents"
-          value={fmt(huntress?.open_incidents)}
-          sub="Open · Huntress"
-          icon="shield"
-          tone="ok"
-        />
-        <KpiCard
-          label="DNS Blocks Today"
-          value={typeof scout?.blocked_requests === 'number' ? fmt(scout.blocked_requests) : '—'}
-          sub={scoutBlockRate !== null ? `${scoutBlockRate}% block rate` : 'Awaiting data feed'}
-          icon="block"
-          tone={typeof scout?.blocked_requests === 'number' ? 'info' : 'muted'}
-        />
-        <KpiCard
-          label="Device Monitoring"
-          value={monitoring ? (monitoring.hosts_down + monitoring.hosts_unreachable > 0 ? `${monitoring.hosts_down + monitoring.hosts_unreachable} Down` : 'All Up') : '—'}
-          sub={monitoring ? `${monitoring.hosts_up} of ${monitoring.total_hosts} online` : 'Loading…'}
-          icon="monitor_heart"
-          tone={!monitoring ? 'muted' : monitoring.hosts_down + monitoring.hosts_unreachable > 0 ? 'crit' : 'ok'}
-        />
-      </div>
+      {/* KPI strip — one divided container */}
+      <KpiStrip cells={kpiCells} />
 
-      {/* Service summary cards */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      {/* Service summary panels */}
+      <div className="grid grid-cols-1 gap-[14px] md:grid-cols-3">
+
+        {/* AWS Resources */}
         <div className="kpi-card !p-0">
-          <div className="flex items-center justify-between px-5 pt-4.5 pb-4">
-            <div className="flex items-center gap-2.5">
-              <span
-                className="flex h-[30px] w-[30px] items-center justify-center rounded-lg"
-                style={{ color: TONE_FG.info, background: `${TONE_FG.info}22` }}
-              >
-                <Icon name="cloud" className="text-[18px]" />
-              </span>
-              <span className="font-display text-[15px] font-bold text-ink-primary">AWS Resources</span>
+          <div className="flex items-center justify-between px-[17px] pt-[15px] pb-[13px]">
+            <div className="flex items-center gap-2">
+              <Icon name="cloud" className="text-[17px]" style={{ color: TONE_FG.info }} />
+              <span className="eyebrow">AWS RESOURCES</span>
             </div>
-            <Link to="/aws" className="flex items-center gap-1 text-[12.5px] font-semibold text-icon-blue no-underline">
-              View <Icon name="arrow_forward" className="text-[15px]" />
+            <Link to="/aws" className="flex items-center gap-0.5 text-[11.5px] font-medium text-icon-blue no-underline hover:text-[#a5c8ff]">
+              View <Icon name="arrow_forward" className="text-[14px]" />
             </Link>
           </div>
-          <div className="px-5 pb-5">
-            <StatGrid
-              stats={[
-                { value: fmt(aws?.instances), label: 'Instances' },
-                { value: fmt(aws?.volumes), label: 'Volumes' },
-                { value: fmt(aws?.snapshots), label: 'Snapshots' },
-              ]}
-            />
+          <div className="px-[17px] pb-[17px]">
+            <StatGrid stats={[
+              { value: fmt(aws?.instances), label: 'Instances' },
+              { value: fmt(aws?.volumes), label: 'Volumes' },
+              { value: fmt(aws?.snapshots), label: 'Snapshots' },
+            ]} />
           </div>
         </div>
 
+        {/* Support Tickets */}
         <div className="kpi-card !p-0">
-          <div className="flex items-center justify-between px-5 pt-4.5 pb-4">
-            <div className="flex items-center gap-2.5">
-              <span
-                className="flex h-[30px] w-[30px] items-center justify-center rounded-lg"
-                style={{ color: TONE_FG.warn, background: `${TONE_FG.warn}22` }}
-              >
-                <Icon name="confirmation_number" className="text-[18px]" />
-              </span>
-              <span className="font-display text-[15px] font-bold text-ink-primary">Support Tickets</span>
+          <div className="flex items-center justify-between px-[17px] pt-[15px] pb-[13px]">
+            <div className="flex items-center gap-2">
+              <Icon name="confirmation_number" className="text-[17px]" style={{ color: TONE_FG.warn }} />
+              <span className="eyebrow">SUPPORT TICKETS</span>
             </div>
-            <Link to="/tickets" className="flex items-center gap-1 text-[12.5px] font-semibold text-icon-blue no-underline">
-              View <Icon name="arrow_forward" className="text-[15px]" />
+            <Link to="/tickets" className="flex items-center gap-0.5 text-[11.5px] font-medium text-icon-blue no-underline hover:text-[#a5c8ff]">
+              View <Icon name="arrow_forward" className="text-[14px]" />
             </Link>
           </div>
-          <div className="px-5 pb-5">
-            <StatGrid
-              stats={[
-                { value: fmt(syncro?.open), label: 'Open', tone: 'warn' },
-                { value: fmt(syncro?.in_progress), label: 'In Progress' },
-                { value: fmt(syncro?.closed), label: 'Closed', tone: 'ok' },
-              ]}
-            />
+          <div className="px-[17px] pb-[17px]">
+            <StatGrid stats={[
+              { value: fmt(syncro?.open), label: 'Open', tone: 'warn' },
+              { value: fmt(syncro?.in_progress), label: 'In Progress' },
+              { value: fmt(syncro?.closed), label: 'Closed', tone: 'ok' },
+            ]} />
           </div>
         </div>
 
+        {/* Huntress Security */}
         <div className="kpi-card !p-0">
-          <div className="flex items-center justify-between px-5 pt-4.5 pb-4">
-            <div className="flex items-center gap-2.5">
-              <span
-                className="flex h-[30px] w-[30px] items-center justify-center rounded-lg"
-                style={{ color: TONE_FG.ok, background: `${TONE_FG.ok}22` }}
-              >
-                <Icon name="shield" className="text-[18px]" />
-              </span>
-              <span className="font-display text-[15px] font-bold text-ink-primary">Huntress Security</span>
+          <div className="flex items-center justify-between px-[17px] pt-[15px] pb-[13px]">
+            <div className="flex items-center gap-2">
+              <Icon name="shield" className="text-[17px]" style={{ color: TONE_FG.ok }} />
+              <span className="eyebrow">HUNTRESS SECURITY</span>
             </div>
-            <Link to="/security" className="flex items-center gap-1 text-[12.5px] font-semibold text-icon-blue no-underline">
-              View <Icon name="arrow_forward" className="text-[15px]" />
+            <Link to="/security" className="flex items-center gap-0.5 text-[11.5px] font-medium text-icon-blue no-underline hover:text-[#a5c8ff]">
+              View <Icon name="arrow_forward" className="text-[14px]" />
             </Link>
           </div>
-          <div className="px-5 pb-5">
-            <StatGrid
-              stats={[
-                { value: fmt(huntress?.total_agents), label: 'Total Agents' },
-                { value: fmt(huntress?.open_incidents), label: 'Open Incidents', tone: 'ok' },
-                { value: fmt(huntress?.critical_incidents), label: 'Critical' },
-              ]}
-            />
+          <div className="px-[17px] pb-[17px]">
+            <StatGrid stats={[
+              { value: fmt(huntress?.total_agents), label: 'Total Agents' },
+              { value: fmt(huntress?.open_incidents), label: 'Open Incidents', tone: 'ok' },
+              { value: fmt(huntress?.critical_incidents), label: 'Critical' },
+            ]} />
           </div>
         </div>
       </div>
 
       {/* Two-column lists */}
-      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 items-start gap-[14px] md:grid-cols-2">
+
+        {/* Recent Tickets */}
         <div className="kpi-card !pb-2">
-          <div className="mb-1 flex items-center justify-between">
-            <span className="font-display text-[15px] font-bold text-ink-primary">Recent Tickets</span>
-            <Link to="/tickets" className="flex items-center gap-1 text-[12.5px] font-semibold text-icon-blue no-underline">
-              All tickets <Icon name="arrow_forward" className="text-[15px]" />
+          <div className="mb-3 flex items-center justify-between">
+            <span className="eyebrow">RECENT TICKETS</span>
+            <Link to="/tickets" className="flex items-center gap-0.5 text-[11.5px] font-medium text-icon-blue no-underline hover:text-[#a5c8ff]">
+              All tickets <Icon name="arrow_forward" className="text-[14px]" />
             </Link>
           </div>
           {tickets.length === 0 ? (
-            <div className="py-6 text-center text-xs text-ink-muted">No ticket data — sync Syncro to populate</div>
+            <div className="py-6 text-center text-[12px] text-ink-muted">
+              No ticket data — sync Syncro to populate
+            </div>
           ) : (
-            tickets.map((t) => (
-              <div key={t.ticket_id} className="flex items-center gap-3 border-t border-white/[0.07] py-3.5">
+            tickets.map((t, i) => (
+              <div
+                key={t.ticket_id}
+                className={`flex items-center gap-3 py-3 ${i > 0 ? 'border-t border-row-hairline' : ''}`}
+              >
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-[13.5px] font-semibold text-ink-primary">{t.subject}</div>
-                  <div className="mt-0.5 text-xs text-ink-faint">
+                  <div className="truncate text-[12.5px] text-ink-secondary">{t.subject}</div>
+                  <div className="mt-0.5 font-mono text-[11px] text-ink-faint">
                     {t.created_at ? new Date(t.created_at).toLocaleDateString() : ''}
                   </div>
                 </div>
@@ -234,29 +232,35 @@ export default function DashboardPage() {
           )}
         </div>
 
+        {/* Recent Security Incidents */}
         <div className="kpi-card !pb-2">
-          <div className="mb-1 flex items-center justify-between">
-            <span className="font-display text-[15px] font-bold text-ink-primary">Recent Security Incidents</span>
-            <Link to="/security" className="flex items-center gap-1 text-[12.5px] font-semibold text-icon-blue no-underline">
-              All incidents <Icon name="arrow_forward" className="text-[15px]" />
+          <div className="mb-3 flex items-center justify-between">
+            <span className="eyebrow">RECENT SECURITY INCIDENTS</span>
+            <Link to="/security" className="flex items-center gap-0.5 text-[11.5px] font-medium text-icon-blue no-underline hover:text-[#a5c8ff]">
+              All incidents <Icon name="arrow_forward" className="text-[14px]" />
             </Link>
           </div>
           {incidents.length === 0 ? (
-            <div className="py-6 text-center text-xs text-ink-muted">No incident data — sync Huntress to populate</div>
+            <div className="py-6 text-center text-[12px] text-ink-muted">
+              No incident data — sync Huntress to populate
+            </div>
           ) : (
-            incidents.map((inc) => {
+            incidents.map((inc, i) => {
               const tone = toneForState(inc.severity)
               return (
-                <div key={inc.incident_id} className="flex items-center gap-3 border-t border-white/[0.07] py-3.5">
+                <div
+                  key={inc.incident_id}
+                  className={`flex items-center gap-3 py-3 ${i > 0 ? 'border-t border-row-hairline' : ''}`}
+                >
                   <span
-                    className="flex h-8 w-8 flex-none items-center justify-center rounded-lg"
-                    style={{ color: TONE_FG[tone], background: `${TONE_FG[tone]}22` }}
+                    className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-lg"
+                    style={{ color: TONE_FG[tone], background: `${TONE_FG[tone]}20` }}
                   >
-                    <Icon name={severityIcon(tone)} className="text-[18px]" />
+                    <Icon name={severityIcon(tone)} className="text-[17px]" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-[13.5px] font-semibold text-ink-primary">{inc.summary}</div>
-                    <div className="mt-0.5 text-xs text-ink-faint">{inc.status}</div>
+                    <div className="truncate text-[12.5px] text-ink-secondary">{inc.summary}</div>
+                    <div className="mt-0.5 font-mono text-[11px] text-ink-faint">{inc.status}</div>
                   </div>
                   <Badge state={inc.severity} />
                 </div>
