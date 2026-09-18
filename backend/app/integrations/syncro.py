@@ -88,6 +88,7 @@ class SyncroTicket(BaseModel):
     customer_id: int | None = None
     problem_type: str | None = None
     body: str | None = None
+    ticket_comments: list[dict[str, Any]] = Field(default_factory=list)
 
     model_config = {"populate_by_name": True}
 
