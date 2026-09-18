@@ -20,6 +20,7 @@ interface Props<T extends Record<string, any>> {
   onLoadMore?: () => void
   hasMore?: boolean
   keyField?: string
+  onRowClick?: (row: T) => void
 }
 
 function SkeletonRow({ cols }: { cols: number }) {
@@ -36,7 +37,7 @@ function SkeletonRow({ cols }: { cols: number }) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function DataTable<T extends Record<string, any>>({
-  columns, data, loading, emptyMessage = 'No data found.', onLoadMore, hasMore, keyField = 'id',
+  columns, data, loading, emptyMessage = 'No data found.', onLoadMore, hasMore, keyField = 'id', onRowClick,
 }: Props<T>) {
   return (
     <div>
@@ -68,8 +69,9 @@ export default function DataTable<T extends Record<string, any>>({
               data.map((row, i) => (
                 <tr
                   key={(row[keyField] as string) ?? i}
-                  className="border-b border-row-hairline transition-colors hover:bg-white/[0.025] last:border-0"
+                  className={`border-b border-row-hairline transition-colors hover:bg-white/[0.025] last:border-0 ${onRowClick ? 'cursor-pointer' : ''}`}
                   style={{ verticalAlign: 'top' }}
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
                 >
                   {columns.map((col) => {
                     const cellClass = col.accent
