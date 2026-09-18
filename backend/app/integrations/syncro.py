@@ -29,9 +29,9 @@ logger = logging.getLogger(__name__)
 # Retry configuration
 # ---------------------------------------------------------------------------
 
-_MAX_ATTEMPTS = 3
+_MAX_ATTEMPTS = 5
 _RETRYABLE_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
-_BACKOFF_BASE = 1.0  # seconds; delay = _BACKOFF_BASE * 2 ** (attempt - 1)
+_BACKOFF_BASE = 5.0  # seconds; delay = _BACKOFF_BASE * 2 ** (attempt - 1)
 
 
 # ---------------------------------------------------------------------------

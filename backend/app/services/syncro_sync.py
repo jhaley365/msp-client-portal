@@ -306,6 +306,7 @@ async def _sync_all(
                 body = ""
                 comments: list[dict] = []
                 if needs_detail:
+                    await asyncio.sleep(0.35)  # ~3 req/s to stay under Syncro rate limit
                     body, comments = await _fetch_full_detail(client, ticket_id)
 
                 item: dict[str, Any] = {
