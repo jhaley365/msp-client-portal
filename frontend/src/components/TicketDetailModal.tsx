@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import Badge from './Badge'
 
 interface TicketDetail {
-  ticket_id?: string | number
+  ticket_id: string | number
   ticket_number: string | number
   subject: string
   status: string
@@ -13,7 +13,15 @@ interface TicketDetail {
   customer_name?: string
   problem_type?: string
   body?: string
-  comments?: { id: string | number; body: string; created_at: string; user?: string; tech?: boolean }[]
+  comments?: Comment[]
+}
+
+interface Comment {
+  id: string | number
+  body: string
+  created_at: string
+  user?: string
+  tech?: boolean
 }
 
 interface Props {
@@ -47,13 +55,18 @@ export default function TicketDetailModal({ ticket, onClose }: Props) {
       style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(2px)' }}
       onClick={(e) => { if (e.target === overlayRef.current) onClose() }}
     >
-      <div className="relative w-full max-w-2xl rounded-lg border border-white/[0.12] bg-panel shadow-2xl">
-        <div className="flex items-start gap-3 border-b border-white/[0.07] px-6 py-5">
+      <div
+        className="relative w-full max-w-2xl rounded-lg border border-panel-border shadow-2xl"
+        style={{ background: 'var(--color-panel)' }}
+      >
+        {/* Header */}
+        <div className="flex items-start gap-3 border-b border-panel-border px-6 py-5">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span className="font-mono text-[11px] text-accent">#{ticket.ticket_number}</span>
+              <span className="font-mono text-[11px] text-icon-blue">#{ticket.ticket_number}</span>
               {ticket.problem_type && (
-                <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-ink-mono px-1.5 py-0.5 rounded bg-white/[0.06]">
+                <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-ink-mono px-1.5 py-0.5 rounded"
+                  style={{ background: 'var(--color-ctrl-bg)' }}>
                   {ticket.problem_type}
                 </span>
               )}
@@ -62,14 +75,16 @@ export default function TicketDetailModal({ ticket, onClose }: Props) {
           </div>
           <button
             onClick={onClose}
-            className="shrink-0 w-7 h-7 flex items-center justify-center rounded text-ink-muted hover:text-ink-primary hover:bg-white/[0.06] transition-colors"
+            className="shrink-0 w-7 h-7 flex items-center justify-center rounded text-ink-muted hover:text-ink-primary hover:bg-white/10 transition-colors"
             aria-label="Close"
           >
             <span className="material-symbols-rounded text-[18px]">close</span>
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-px border-b border-white/[0.07]" style={{ background: 'rgba(255,255,255,0.07)' }}>
+        {/* Meta row */}
+        <div className="grid grid-cols-2 gap-px border-b border-panel-border"
+          style={{ background: 'var(--color-panel-border)' }}>
           {[
             { label: 'Status', value: <Badge state={ticket.status} /> },
             { label: 'Priority', value: ticket.priority || '—' },
@@ -78,26 +93,29 @@ export default function TicketDetailModal({ ticket, onClose }: Props) {
             { label: 'Created', value: ticket.created_at ? formatDate(ticket.created_at) : '—' },
             { label: 'Updated', value: ticket.updated_at ? formatDate(ticket.updated_at) : '—' },
           ].map(({ label, value }) => (
-            <div key={label} className="px-6 py-3 bg-panel">
+            <div key={label} className="px-6 py-3" style={{ background: 'var(--color-panel)' }}>
               <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-mono mb-0.5">{label}</div>
               <div className="text-[12.5px] text-ink-secondary">{value}</div>
             </div>
           ))}
         </div>
 
+        {/* Body */}
         {ticket.body && (
-          <div className="px-6 py-5 border-b border-white/[0.07]">
-            <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-mono mb-2">Description</div>
+          <div className="px-6 py-5 border-b border-panel-border">
+            <div className="eyebrow mb-2">Description</div>
             <p className="text-[12.5px] text-ink-secondary leading-relaxed whitespace-pre-wrap">{ticket.body}</p>
           </div>
         )}
 
-        <div className="px-6 py-5">
-          <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-mono mb-3">Activity</div>
-          {ticket.comments && ticket.comments.length > 0 ? (
+        {/* Comments */}
+        {ticket.comments && ticket.comments.length > 0 ? (
+          <div className="px-6 py-5">
+            <div className="eyebrow mb-3">Activity</div>
             <div className="flex flex-col gap-3">
               {ticket.comments.map((c) => (
-                <div key={c.id} className="rounded border border-white/[0.07] p-3 bg-white/[0.03]">
+                <div key={c.id} className="rounded border border-panel-border p-3"
+                  style={{ background: 'var(--color-ctrl-bg)' }}>
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-[11px] font-medium text-ink-primary">{c.user || (c.tech ? 'Technician' : 'Customer')}</span>
                     <span className="font-mono text-[10px] text-ink-mono">{formatDate(c.created_at)}</span>
@@ -106,10 +124,13 @@ export default function TicketDetailModal({ ticket, onClose }: Props) {
                 </div>
               ))}
             </div>
-          ) : (
+          </div>
+        ) : (
+          <div className="px-6 py-5">
+            <div className="eyebrow mb-2">Activity</div>
             <p className="text-[12px] text-ink-muted">No comments on this ticket.</p>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )

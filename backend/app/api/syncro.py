@@ -143,6 +143,33 @@ def list_tickets(
     }
 
 
+# ── Single ticket ────────────────────────────────────────────────────────────
+
+
+@router.get("/tickets/{ticket_id}")
+def get_ticket(
+    ticket_id: str,
+    user: dict = Depends(get_current_user),
+) -> dict:
+    """Return a single ticket by its DynamoDB primary key (ticket_id).
+
+    Only returns the ticket if it belongs to the authenticated customer.
+    """
+    customer_id: str = user["customer_id"]
+    tbl = _table(TABLE_SYNCRO_TICKETS)
+
+    resp = tbl.get_item(Key={"ticket_id": ticket_id})
+    item = resp.get("Item")
+
+    if not item:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    if str(item.get("customer_id")) != str(customer_id):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    return item
+
+
 # ── Admin: all-customer summary ───────────────────────────────────────────────
 
 OPEN_STATUSES = {

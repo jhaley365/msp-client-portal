@@ -3,6 +3,7 @@ import api from '../lib/api'
 import KpiStrip, { KpiCell } from '../components/KpiStrip'
 import DataTable, { Column } from '../components/DataTable'
 import Badge from '../components/Badge'
+import TicketDetailModal from '../components/TicketDetailModal'
 
 type StatusFilter =
   | 'all' | 'open' | 'New' | 'In Progress' | 'Waiting on Customer'
@@ -11,12 +12,17 @@ type StatusFilter =
 
 interface Ticket {
   ticket_number: string | number
+  ticket_id?: string | number
   subject: string
   status: string
   priority: string
   assigned_tech: string
   created_at: string
   updated_at: string
+  customer_name?: string
+  problem_type?: string
+  body?: string
+  comments?: { id: string | number; body: string; created_at: string; user?: string; tech?: boolean }[]
 }
 
 interface Summary { total: number; open: number }
@@ -28,6 +34,7 @@ export default function TicketsPage() {
   const [lastKey, setLastKey] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(false)
   const [summary, setSummary] = useState<Summary | null>(null)
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
 
   const loadTickets = async (append = false) => {
     setLoading(true)
@@ -107,6 +114,7 @@ export default function TicketsPage() {
 
   return (
     <div className="flex flex-col gap-[14px]">
+      <TicketDetailModal ticket={selectedTicket} onClose={() => setSelectedTicket(null)} />
       {/* Page title — "Support Tickets" is provided via breadcrumb in the topbar;
           this secondary label mirrors the spec's "Tickets · Support Tickets" format */}
       <div className="eyebrow">Support Tickets</div>
@@ -137,6 +145,13 @@ export default function TicketsPage() {
           hasMore={hasMore}
           onLoadMore={() => loadTickets(true)}
           keyField="ticket_number"
+          onRowClick={async (row) => {
+            setSelectedTicket(row)
+            try {
+              const { data } = await api.get(`/syncro/tickets/${row.ticket_number}`)
+              setSelectedTicket((prev) => prev && prev.ticket_number === row.ticket_number ? { ...row, ...data } : prev)
+            } catch { /* show what we have */ }
+          }}
         />
       </div>
     </div>
