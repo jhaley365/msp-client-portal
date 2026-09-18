@@ -20,6 +20,7 @@ interface Props<T extends Record<string, any>> {
   onLoadMore?: () => void
   hasMore?: boolean
   keyField?: string
+  onRowClick?: (row: T) => void
 }
 
 function SkeletonRow({ cols }: { cols: number }) {
@@ -38,6 +39,7 @@ function SkeletonRow({ cols }: { cols: number }) {
 export default function DataTable<T extends Record<string, any>>({
   columns, data, loading, emptyMessage = 'No data found.', onLoadMore, hasMore, keyField = 'id',
 }: Props<T>) {
+  // onRowClick extracted below
   return (
     <div>
       <div className="overflow-x-auto">
