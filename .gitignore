@@ -22,3 +22,9 @@ samconfig.toml
 *.tfstate.backup
 .terraform/
 .claude/
+.venv/
+*.xlsx
+__pycache__/
+*.pyc
+node_modules/
+frontend/dist/
