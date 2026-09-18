@@ -1,0 +1,152 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  EC2 Inventory Sync Lambda — collects instances, volumes, and snapshots
+  across AWS regions and stores them in DynamoDB for the MSP client portal.
+
+Parameters:
+  DynamoDBRegion:
+    Type: String
+    Default: us-east-1
+    Description: AWS region where the DynamoDB tables reside.
+
+  EC2Regions:
+    Type: String
+    Default: ""
+    Description: >
+      Comma-separated list of regions to scan.  Leave empty to scan all
+      enabled regions automatically.
+
+  OwnerFilter:
+    Type: String
+    Default: self
+    AllowedValues: ["self", ""]
+    Description: >
+      "self" restricts DescribeSnapshots to this account only.
+      Leave empty to include snapshots shared with this account.
+
+  ScheduleExpression:
+    Type: String
+    Default: "rate(30 minutes)"
+    Description: EventBridge schedule for triggering the sync.
+
+  LambdaMemoryMB:
+    Type: Number
+    Default: 256
+    MinValue: 128
+    MaxValue: 3008
+
+  LambdaTimeoutSeconds:
+    Type: Number
+    Default: 300
+    MinValue: 30
+    MaxValue: 900
+
+Resources:
+
+  # ── IAM Role ──────────────────────────────────────────────────────────────
+
+  EC2InventorySyncRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: EC2InventorySyncLambdaRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: EC2ReadOnly
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeInstances
+                  - ec2:DescribeVolumes
+                  - ec2:DescribeSnapshots
+                  - ec2:DescribeRegions
+                Resource: "*"
+        - PolicyName: DynamoDBInventoryWrite
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:BatchWriteItem
+                Resource:
+                  - !Sub "arn:aws:dynamodb:${DynamoDBRegion}:${AWS::AccountId}:table/EC2Instances"
+                  - !Sub "arn:aws:dynamodb:${DynamoDBRegion}:${AWS::AccountId}:table/EC2Volumes"
+                  - !Sub "arn:aws:dynamodb:${DynamoDBRegion}:${AWS::AccountId}:table/EC2Snapshots"
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                Resource:
+                  - !Sub "arn:aws:dynamodb:${DynamoDBRegion}:${AWS::AccountId}:table/Customers"
+                  - !Sub "arn:aws:dynamodb:${DynamoDBRegion}:${AWS::AccountId}:table/Customers/index/email-index"
+
+  # ── Lambda Function ────────────────────────────────────────────────────────
+
+  EC2InventorySyncFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: ec2-inventory-sync
+      Description: "Syncs EC2 instances, volumes, and snapshots into DynamoDB."
+      Runtime: python3.12
+      Handler: ec2_inventory_sync.lambda_handler
+      Role: !GetAtt EC2InventorySyncRole.Arn
+      MemorySize: !Ref LambdaMemoryMB
+      Timeout: !Ref LambdaTimeoutSeconds
+      Environment:
+        Variables:
+          DYNAMODB_REGION: !Ref DynamoDBRegion
+          EC2_REGIONS: !Ref EC2Regions
+          OWNER_FILTER: !Ref OwnerFilter
+      # Deploy via S3 or inline zip — replace with your actual deployment method.
+      Code:
+        ZipFile: |
+          # Placeholder — replace with the actual deployment package.
+          def lambda_handler(event, context):
+              raise NotImplementedError("Deploy the real package first.")
+      Tags:
+        - Key: Project
+          Value: msp-client-portal
+
+  # ── EventBridge Rule ───────────────────────────────────────────────────────
+
+  SyncScheduleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: ec2-inventory-sync-schedule
+      Description: "Triggers the EC2 inventory sync Lambda on a schedule."
+      ScheduleExpression: !Ref ScheduleExpression
+      State: ENABLED
+      Targets:
+        - Id: EC2InventorySyncTarget
+          Arn: !GetAtt EC2InventorySyncFunction.Arn
+
+  SyncSchedulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref EC2InventorySyncFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt SyncScheduleRule.Arn
+
+Outputs:
+  LambdaFunctionName:
+    Value: !Ref EC2InventorySyncFunction
+    Description: Name of the sync Lambda function.
+
+  LambdaFunctionArn:
+    Value: !GetAtt EC2InventorySyncFunction.Arn
+    Description: ARN of the sync Lambda function.
+
+  IAMRoleArn:
+    Value: !GetAtt EC2InventorySyncRole.Arn
+    Description: Execution role ARN — attach this to the Lambda manually if deploying outside CloudFormation.

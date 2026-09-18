@@ -1,0 +1,131 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Design-token CSS variables ──────────────────────────────────────────── */
+/* Light mode (default) — cool blue-slate, not stark white */
+:root {
+  --color-page:          #e8ecf2;
+  --color-chrome:        #edf0f5;
+  --color-panel:         #f2f4f8;
+  --color-rail:          #dde2ea;
+  --color-panel-border:  #cdd3dd;
+  --color-divider:       #d5dbe5;
+  --color-row-hairline:  #dce1ea;
+  --color-ctrl-bg:       #e3e7ee;
+  --color-ctrl-border:   #c4ccd8;
+  --color-rail-active:   #d4dae5;
+  --color-ink-primary:   #0f1520;
+  --color-ink-secondary: #2e3a4e;
+  --color-ink-muted:     #4f5e72;
+  --color-ink-label:     #3d4d61;
+  --color-ink-faint:     #7286a0;
+  --color-ink-mono:      #5e7088;
+  --color-ink-chevron:   #9aaabb;
+
+  /* Tone colors darkened for light-mode contrast */
+  --tone-ok:     #16a34a;
+  --tone-warn:   #b45309;
+  --tone-crit:   #dc2626;
+  --tone-info:   #1d4ed8;
+  --tone-purple: #7c3aed;
+  --tone-muted:  #4b5563;
+}
+
+/* Dark mode — applied when <html class="dark"> */
+html.dark {
+  /* Tone colors revert to vivid light hues on dark surfaces */
+  --tone-ok:     #4ade80;
+  --tone-warn:   #fbbf24;
+  --tone-crit:   #f87171;
+  --tone-info:   #7cb0ff;
+  --tone-purple: #c4b5fd;
+  --tone-muted:  #9aa6b8;
+
+  --color-page:          #0b0c10;
+  --color-chrome:        #0b0c10;
+  --color-panel:         #0d0f14;
+  --color-rail:          #08090c;
+  --color-panel-border:  #22242b;
+  --color-divider:       #1c1e24;
+  --color-row-hairline:  #16181d;
+  --color-ctrl-bg:       #101218;
+  --color-ctrl-border:   #262931;
+  --color-rail-active:   #191b21;
+  --color-ink-primary:   #ffffff;
+  --color-ink-secondary: #dfe3e9;
+  --color-ink-muted:     #8d95a3;
+  --color-ink-label:     #cdd2da;
+  --color-ink-faint:     #6e7684;
+  --color-ink-mono:      #7b8391;
+  --color-ink-chevron:   #3d434e;
+}
+
+/* In light mode, white-alpha borders become dark-alpha */
+html:not(.dark) .border-white\/\[0\.07\] { border-color: rgba(0,0,0,0.07); }
+html:not(.dark) .border-b.border-white\/\[0\.07\] { border-color: rgba(0,0,0,0.07); }
+html:not(.dark) .border-t.border-white\/\[0\.07\] { border-color: rgba(0,0,0,0.07); }
+html:not(.dark) .bg-white\/\[0\.06\] { background-color: rgba(0,0,0,0.04); }
+html:not(.dark) .hover\:bg-white\/\[0\.06\]:hover { background-color: rgba(0,0,0,0.04); }
+html:not(.dark) .divide-white\/\[0\.07\] > * + * { border-color: rgba(0,0,0,0.07); }
+html:not(.dark) header, html:not(.dark) nav { border-color: rgba(0,0,0,0.08); }
+/* Skeleton shimmer in light mode */
+html:not(.dark) .bg-white\/10 { background-color: rgba(0,0,0,0.06); }
+
+@font-face {
+  font-family: 'Material Symbols Rounded';
+  font-style: normal;
+  font-weight: 400;
+  src: url('/fonts/material-symbols-rounded.woff2') format('woff2');
+  font-display: block;
+}
+
+.material-symbols-rounded {
+  font-family: 'Material Symbols Rounded';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer base {
+  body {
+    @apply bg-page text-ink-primary antialiased font-sans;
+  }
+}
+
+@layer components {
+  /* Flat panel — hairline border, no glow, radius 8 */
+  .kpi-card {
+    @apply bg-panel rounded-lg border border-panel-border p-[17px];
+  }
+  .section-card {
+    @apply bg-panel rounded-lg border border-panel-border;
+  }
+  /* Status tab strip */
+  .tab-btn {
+    @apply px-3 py-3 text-[12.5px] font-medium whitespace-nowrap transition-colors border-b-2 border-transparent text-ink-muted hover:text-ink-primary;
+  }
+  .tab-btn-active,
+  .tab-btn.active {
+    @apply border-accent text-ink-primary font-semibold;
+  }
+  .tab-btn-inactive {
+    @apply border-transparent text-ink-muted hover:text-ink-primary;
+  }
+  /* Status chip — squarish, radius 4, 10.5px mono */
+  .pill {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-[10.5px] font-medium whitespace-nowrap capitalize font-mono;
+  }
+  /* Mono eyebrow label (panel/section titles) */
+  .eyebrow {
+    @apply font-mono text-[10.5px] font-medium uppercase tracking-[0.13em] text-ink-mono;
+  }
+}
