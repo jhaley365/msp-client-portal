@@ -210,8 +210,8 @@ async def _fetch_all_tickets_for_customer(
     return all_tickets
 
 
-async def _fetch_full_detail(client: SyncroClient, ticket_id: str) -> tuple[str, list[dict]]:
-    """Return (body, comments) by calling the single-ticket Syncro endpoint."""
+async def _fetch_full_detail(client: SyncroClient, ticket_id: str) -> tuple[str, list[dict], str]:
+    """Return (body, comments, assigned_tech) from the single-ticket Syncro endpoint."""
     try:
         raw = await client._request("GET", f"/tickets/{ticket_id}")
         ticket_data = raw.get("ticket", raw)
@@ -221,10 +221,16 @@ async def _fetch_full_detail(client: SyncroClient, ticket_id: str) -> tuple[str,
             or ticket_data.get("comments")
             or []
         )
-        return body, _normalize_comments(raw_comments)
+        user_obj = ticket_data.get("user") or {}
+        assigned_tech = (
+            (user_obj.get("full_name") if isinstance(user_obj, dict) else None)
+            or ticket_data.get("user_email")
+            or ""
+        )
+        return body, _normalize_comments(raw_comments), assigned_tech
     except Exception as exc:
         logger.warning("Could not fetch full detail for ticket %s: %s", ticket_id, exc)
-        return "", []
+        return "", [], ""
 
 
 async def _sync_all(
@@ -305,8 +311,12 @@ async def _sync_all(
 
                 body = ""
                 comments: list[dict] = []
+                assigned_tech = ticket.get("assigned_tech") or ticket.get("user_email") or ""
                 if needs_detail:
-                    body, comments = await _fetch_full_detail(client, ticket_id)
+                    await asyncio.sleep(0.35)  # ~3 req/s to stay under Syncro rate limit
+                    body, comments, detail_tech = await _fetch_full_detail(client, ticket_id)
+                    if detail_tech:
+                        assigned_tech = detail_tech
 
                 item: dict[str, Any] = {
                     "ticket_id": ticket_id,
@@ -316,9 +326,7 @@ async def _sync_all(
                     "subject": ticket.get("subject", ""),
                     "status": ticket.get("status", ""),
                     "priority": ticket.get("priority") or "",
-                    "assigned_tech": ticket.get("assigned_tech")
-                    or ticket.get("user_email")
-                    or "",
+                    "assigned_tech": assigned_tech,
                     "problem_type": ticket.get("problem_type") or "",
                     "created_at": ticket.get("created_at", ""),
                     "updated_at": updated_at,
