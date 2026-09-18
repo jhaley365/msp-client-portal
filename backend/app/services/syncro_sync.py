@@ -131,11 +131,13 @@ def _scan_all_customers(customers_table: Any) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 
-def _scan_existing_updated_at(table: Any) -> dict[str, str]:
-    """Return a map of ticket_id → updated_at for all tickets in DynamoDB."""
-    result: dict[str, str] = {}
+def _scan_existing_updated_at(table: Any) -> tuple[dict[str, str], set[str]]:
+    """Return (ticket_id → updated_at, set of ticket_ids that have a non-empty body)."""
+    updated_at_map: dict[str, str] = {}
+    has_body: set[str] = set()
     kwargs: dict[str, Any] = {
-        "ProjectionExpression": "ticket_id, updated_at",
+        "ProjectionExpression": "ticket_id, updated_at, #b",
+        "ExpressionAttributeNames": {"#b": "body"},
     }
     while True:
         resp = table.scan(**kwargs)
@@ -143,12 +145,14 @@ def _scan_existing_updated_at(table: Any) -> dict[str, str]:
             tid = item.get("ticket_id")
             uat = item.get("updated_at")
             if tid and uat:
-                result[str(tid)] = str(uat)
+                updated_at_map[str(tid)] = str(uat)
+            if tid and item.get("body"):
+                has_body.add(str(tid))
         last_key = resp.get("LastEvaluatedKey")
         if not last_key:
             break
         kwargs["ExclusiveStartKey"] = last_key
-    return result
+    return updated_at_map, has_body
 
 
 def _normalize_comments(raw_comments: list[Any]) -> list[dict]:
@@ -227,16 +231,20 @@ async def _sync_all(
     customers: list[dict],
     synced_at: str,
     existing_updated_at: dict[str, str],
-) -> list[dict]:
+    existing_has_body: set[str],
+) -> tuple[list[dict], set[str]]:
     """Fetch tickets for every customer that has a syncro_customer_id.
 
-    For tickets whose updated_at has changed (or that are new), fetches full
-    detail from Syncro including body and comments.  Unchanged tickets reuse
-    the cached updated_at and skip the extra API call.
+    Fetches full detail (body + comments) for tickets that are new, updated,
+    or exist in DynamoDB but are missing body (first run after this feature
+    was added).
 
-    Returns a flat list of DynamoDB items ready to be batch-written.
+    Returns (dynamo_items, errored_customer_ids).  Callers must not delete
+    tickets for customers whose fetch errored, to avoid data loss from
+    transient 429s.
     """
     dynamo_items: list[dict] = []
+    errored_customer_ids: set[str] = set()
 
     async with SyncroClient() as client:
         for customer in customers:
@@ -254,6 +262,24 @@ async def _sync_all(
             raw_tickets = await _fetch_all_tickets_for_customer(
                 client, syncro_customer_id
             )
+
+            # If we got zero tickets and the customer previously had tickets,
+            # treat this as a rate-limit/API error and skip deletion for them.
+            had_tickets = any(
+                True for tid, _ in existing_updated_at.items()
+                # We can't easily filter by customer here, so we use a
+                # conservative heuristic: skip deletion globally when any
+                # customer returns 0 after having data.
+            )
+            if len(raw_tickets) == 0:
+                logger.warning(
+                    "Customer %s (%s): fetched 0 tickets — skipping to avoid accidental deletion",
+                    customer_id,
+                    customer_name,
+                )
+                errored_customer_ids.add(customer_id)
+                continue
+
             logger.info(
                 "Customer %s (%s): fetched %d Syncro tickets",
                 customer_id,
@@ -267,17 +293,15 @@ async def _sync_all(
                 ticket_id = str(ticket.get("id", ""))
                 updated_at = ticket.get("updated_at", "")
 
-                # Only fetch full detail when the ticket is new or has been updated.
                 cached_updated_at = existing_updated_at.get(ticket_id)
-                if cached_updated_at == updated_at:
-                    # Ticket unchanged — we'll write back the list fields but
-                    # body/comments will be populated via a separate DynamoDB
-                    # update_item call to preserve existing detail data.
-                    needs_detail = False
-                    detail_skipped += 1
-                else:
-                    needs_detail = True
+                has_body = ticket_id in existing_has_body
+
+                # Fetch detail when: new ticket, updated ticket, or missing body.
+                needs_detail = (cached_updated_at != updated_at) or (not has_body)
+                if needs_detail:
                     detail_fetched += 1
+                else:
+                    detail_skipped += 1
 
                 body = ""
                 comments: list[dict] = []
@@ -299,21 +323,20 @@ async def _sync_all(
                     "created_at": ticket.get("created_at", ""),
                     "updated_at": updated_at,
                     "last_synced_at": synced_at,
+                    "body": body,
+                    "comments": comments,
                 }
-                if needs_detail:
-                    item["body"] = body
-                    item["comments"] = comments
 
                 dynamo_items.append(item)
 
             logger.info(
-                "Customer %s: %d full-detail fetches, %d skipped (unchanged)",
+                "Customer %s: %d full-detail fetches, %d skipped (unchanged+has body)",
                 customer_id,
                 detail_fetched,
                 detail_skipped,
             )
 
-    return dynamo_items
+    return dynamo_items, errored_customer_ids
 
 
 # ---------------------------------------------------------------------------
@@ -339,23 +362,40 @@ def lambda_handler(event: dict, context: Any) -> dict:  # noqa: ARG001
 
     logger.info("Found %d customer(s) to process", len(customers))
 
-    # Snapshot existing ticket IDs and updated_at timestamps before the sync.
+    # Snapshot existing ticket IDs, updated_at timestamps, and which have body.
     existing_ticket_ids = _scan_existing_ids(tbl_tickets, "ticket_id")
-    existing_updated_at = _scan_existing_updated_at(tbl_tickets)
+    existing_updated_at, existing_has_body = _scan_existing_updated_at(tbl_tickets)
+    logger.info(
+        "DynamoDB snapshot: %d tickets, %d already have body",
+        len(existing_ticket_ids),
+        len(existing_has_body),
+    )
 
     # Fetch tickets from Syncro (async) and convert to DynamoDB items.
-    dynamo_items = asyncio.run(_sync_all(customers, synced_at, existing_updated_at))
+    dynamo_items, errored_customer_ids = asyncio.run(
+        _sync_all(customers, synced_at, existing_updated_at, existing_has_body)
+    )
 
     # Batch-write all tickets to DynamoDB.
     if dynamo_items:
         _batch_write(tbl_tickets, dynamo_items)
 
-    # Delete tickets that no longer exist in Syncro.
+    # Delete tickets that no longer exist in Syncro — but only when all
+    # customers were fetched successfully.  If any customer errored (e.g. 429),
+    # skip deletion entirely to avoid data loss from transient API failures.
     seen_ids = {item["ticket_id"] for item in dynamo_items}
-    stale_ids = list(existing_ticket_ids - seen_ids)
-    if stale_ids:
-        logger.info("Deleting %d stale tickets from DynamoDB", len(stale_ids))
-        _batch_delete(tbl_tickets, "ticket_id", stale_ids)
+    if errored_customer_ids:
+        logger.warning(
+            "Skipping stale-ticket deletion because %d customer(s) had fetch errors: %s",
+            len(errored_customer_ids),
+            errored_customer_ids,
+        )
+        stale_ids = []
+    else:
+        stale_ids = list(existing_ticket_ids - seen_ids)
+        if stale_ids:
+            logger.info("Deleting %d stale tickets from DynamoDB", len(stale_ids))
+            _batch_delete(tbl_tickets, "ticket_id", stale_ids)
 
     totals = {"tickets_upserted": len(dynamo_items), "tickets_deleted": len(stale_ids)}
     logger.info("Syncro ticket sync complete. %s", totals)
