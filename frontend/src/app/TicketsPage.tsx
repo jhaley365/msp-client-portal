@@ -148,7 +148,7 @@ export default function TicketsPage() {
           onRowClick={async (row) => {
             setSelectedTicket(row)
             try {
-              const { data } = await api.get(`/syncro/tickets/${row.ticket_number}`)
+              const { data } = await api.get(`/syncro/tickets/${row.ticket_id ?? row.ticket_number}`)
               setSelectedTicket((prev) => prev && prev.ticket_number === row.ticket_number ? { ...row, ...data } : prev)
             } catch { /* show what we have */ }
           }}

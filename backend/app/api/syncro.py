@@ -147,14 +147,11 @@ def list_tickets(
 
 
 @router.get("/tickets/{ticket_id}")
-def get_ticket(
+async def get_ticket(
     ticket_id: str,
     user: dict = Depends(get_current_user),
 ) -> dict:
-    """Return a single ticket by its DynamoDB primary key (ticket_id).
-
-    Only returns the ticket if it belongs to the authenticated customer.
-    """
+    """Return a single ticket with live body/comments from Syncro."""
     customer_id: str = user["customer_id"]
     tbl = _table(TABLE_SYNCRO_TICKETS)
 
@@ -166,6 +163,27 @@ def get_ticket(
 
     if str(item.get("customer_id")) != str(customer_id):
         raise HTTPException(status_code=403, detail="Access denied")
+
+    # Fetch live details (body + comments) from Syncro.
+    try:
+        from app.integrations.syncro import SyncroClient
+        async with SyncroClient() as client:
+            raw = await client._request("GET", f"/tickets/{ticket_id}")
+        ticket_data = raw.get("ticket", raw)
+        item["body"] = ticket_data.get("body") or ""
+        raw_comments = ticket_data.get("ticket_comments") or ticket_data.get("comments") or []
+        item["comments"] = [
+            {
+                "id": c.get("id", ""),
+                "body": c.get("body", ""),
+                "created_at": c.get("created_at", ""),
+                "user": c.get("user", {}).get("name") if isinstance(c.get("user"), dict) else c.get("user") or "",
+                "tech": c.get("tech", False),
+            }
+            for c in raw_comments
+        ]
+    except Exception:
+        pass  # Return cached data without body/comments on Syncro error
 
     return item
 

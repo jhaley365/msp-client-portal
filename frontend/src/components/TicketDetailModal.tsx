@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import Badge from './Badge'
 
 interface TicketDetail {
-  ticket_id: string | number
+  ticket_id?: string | number
   ticket_number: string | number
   subject: string
   status: string
